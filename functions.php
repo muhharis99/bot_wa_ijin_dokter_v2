@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 require_once __DIR__ . '/db.php';
+
 function e(?string $value): string
 {
     return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
 }
+
 function indoDate(string $date): string
 {
     $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -13,25 +15,46 @@ function indoDate(string $date): string
     $t = strtotime($date);
     return $days[(int)date('w', $t)] . ', ' . date('j', $t) . ' ' . $months[(int)date('n', $t) - 1] . ' ' . date('Y', $t);
 }
+
 function normalizePhone(string $phone): string
 {
     $phone = preg_replace('/\D+/', '', $phone);
-    // if (str_starts_with($phone, '0')) $phone = '62' . substr($phone, 1);
-    // return $phone;
     if (strpos($phone, '0') === 0) {
         $phone = '62' . substr($phone, 1);
     }
     return $phone;
 }
+
 function setting(string $key, string $fallback = ''): string
 {
     $s = db()->prepare('SELECT `value` FROM settings WHERE `key` = ?');
     $s->execute([$key]);
     return (string)($s->fetchColumn() ?: $fallback);
 }
+
+function reminderType(): string
+{
+    return 'H_MINUS_1';
+}
+
+function defaultReminderTargetDate(): string
+{
+    return date('Y-m-d', strtotime('+1 day'));
+}
+
+function reminderTemplate(): string
+{
+    $template = setting('template', DEFAULT_TEMPLATE);
+
+    if (stripos($template, 'hari ini Anda memiliki jadwal praktik') !== false) {
+        return DEFAULT_TEMPLATE;
+    }
+
+    return $template;
+}
+
 function schedulesFor(string $date): array
 {
-    // Use rsi_byl database with new schema
     $s = get_db('rsi_byl')->prepare("
         SELECT 
             djk.hari, 
@@ -49,50 +72,75 @@ function schedulesFor(string $date): array
         FROM dokter_jadwal_kuota djk 
         LEFT JOIN dokter_jadwal dj ON dj.id = djk.dokter_jadwal_id 
         LEFT JOIN master_dokter md ON md.dokter_kd = dj.dokter_kd 
-        left JOIN master_poli mp ON mp.poli_kd = dj.poli_kd
-        left join kontak_dokter kd on kd.kd_dr = dj.dokter_kd
-        WHERE djk.tanggal=? AND djk.aktif='1' and kd.no_hp !='0' and djk.kuota_all>2
-        and dj.poli_kd not in ('EEG','PDP','ODC','P084','P085','P086','GCU')
-        group by dj.dokter_kd,dj.poli_kd
+        LEFT JOIN master_poli mp ON mp.poli_kd = dj.poli_kd
+        LEFT JOIN kontak_dokter kd ON kd.kd_dr = dj.dokter_kd
+        WHERE djk.tanggal=? 
+          AND djk.aktif='1' 
+          AND kd.no_hp !='0' 
+          AND djk.kuota_all>2
+          AND dj.poli_kd NOT IN ('EEG','PDP','ODC','P084','P085','P086','GCU')
+        GROUP BY dj.dokter_kd,dj.poli_kd
         ORDER BY dj.jam_mulai
-        
     ");
     $s->execute([$date]);
     return $s->fetchAll();
 }
+
 function createReminder(array $doctor, array $items, string $date): int
 {
     $pdo = db();
-    // Get the local doctor ID from the kode_dokter
-    $q_doctor_id = $pdo->prepare('SELECT dokter_kd as id , dokter_kd as doctor_id FROM rsi_byl.master_dokter WHERE dokter_kd = ?');
-    $q_doctor_id->execute([$doctor['doctor_id']]); // doctor_id here is actually dokter_kd from rsi_byl
-    $local_doctor_id = $q_doctor_id->fetchColumn();
-
-    // if (!$local_doctor_id) {
-    //     // If doctor not found in local doctors table, create it
-    //     $q_insert_doctor = $pdo->prepare('INSERT INTO doctors(kode_dokter,nama_dokter,spesialis,no_whatsapp,status) VALUES(?,?,?,?,?)');
-    //     $q_insert_doctor->execute([$doctor['doctor_id'], $doctor['nama_dokter'], $doctor['spesialis'], $doctor['no_whatsapp'], 'AKTIF']);
-    //     $local_doctor_id = $pdo->lastInsertId();
-    // }
+    $qDoctorId = $pdo->prepare('SELECT dokter_kd FROM rsi_byl.master_dokter WHERE dokter_kd = ?');
+    $qDoctorId->execute([$doctor['doctor_id']]);
+    $localDoctorId = $qDoctorId->fetchColumn();
 
     $exists = $pdo->prepare('SELECT id FROM reminders WHERE tanggal=? AND doctor_id=? AND reminder_type=?');
-    $exists->execute([$date, $local_doctor_id, 'HARI_INI']);
-    if ($id = $exists->fetchColumn()) return (int)$id;
+    $exists->execute([$date, $localDoctorId, reminderType()]);
+
+    if ($id = $exists->fetchColumn()) {
+        return (int)$id;
+    }
+
     $rows = '';
-    foreach ($items as $item) $rows .= "\n🕐 {$item['jam_mulai']} - {$item['jam_selesai']}\n   Poli {$item['nama_poli']} — {$item['lokasi']}\n";
-    $vars = ['{{nama_dokter}}' => $doctor['nama_dokter'], '{{gelar}}' => '', '{{spesialis}}' => $doctor['spesialis'], '{{tanggal}}' => indoDate($date), '{{hari}}' => indoDate($date), '{{nama_poli}}' => $items[0]['nama_poli'], '{{jam_mulai}}' => $items[0]['jam_mulai'], '{{jam_selesai}}' => $items[0]['jam_selesai'], '{{lokasi}}' => $items[0]['lokasi'], '{{nama_rs}}' => setting('nama_rs', 'RS Sehat Sentosa')];
-    $message = strtr(setting('template', DEFAULT_TEMPLATE), $vars);
-    if (count($items) > 1) $message .= "\n\nJadwal lainnya hari ini:" . $rows;
+    foreach ($items as $item) {
+        $rows .= "\n🕐 {$item['jam_mulai']} - {$item['jam_selesai']}\n   Poli {$item['nama_poli']} — {$item['lokasi']}\n";
+    }
+
+    $vars = [
+        '{{nama_dokter}}' => $doctor['nama_dokter'],
+        '{{gelar}}' => '',
+        '{{spesialis}}' => $doctor['spesialis'],
+        '{{tanggal}}' => indoDate($date),
+        '{{hari}}' => indoDate($date),
+        '{{nama_poli}}' => $items[0]['nama_poli'],
+        '{{jam_mulai}}' => $items[0]['jam_mulai'],
+        '{{jam_selesai}}' => $items[0]['jam_selesai'],
+        '{{lokasi}}' => $items[0]['lokasi'],
+        '{{nama_rs}}' => setting('nama_rs', 'RS Sehat Sentosa')
+    ];
+
+    $message = strtr(reminderTemplate(), $vars);
+
+    if (count($items) > 1) {
+        $message .= "\n\nJadwal lainnya besok:" . $rows;
+    }
+
     $q = $pdo->prepare('INSERT INTO reminders(doctor_id,tanggal,reminder_type,message,status,created_at) VALUES(?,?,?,?,?,?)');
-    $q->execute([$local_doctor_id, $date, 'HARI_INI', $message, 'READY', date('Y-m-d H:i:s')]);
+    $q->execute([$localDoctorId, $date, reminderType(), $message, 'READY', date('Y-m-d H:i:s')]);
+
     return (int)$pdo->lastInsertId();
 }
+
 function ensureReminders(string $date): void
 {
     $groups = [];
-    foreach (schedulesFor($date) as $row) $groups[$row['doctor_id']][] = $row;
-    foreach ($groups as $items) createReminder($items[0], $items, $date);
+    foreach (schedulesFor($date) as $row) {
+        $groups[$row['doctor_id']][] = $row;
+    }
+    foreach ($groups as $items) {
+        createReminder($items[0], $items, $date);
+    }
 }
+
 function logAction(int $reminderId, string $action): void
 {
     $q = db()->prepare('INSERT INTO reminder_logs(reminder_id,action,created_at) VALUES(?,?,?)');
