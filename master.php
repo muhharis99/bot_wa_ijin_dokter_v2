@@ -158,6 +158,11 @@ $schedules = $pdo->query("
         rel="stylesheet"
     >
 
+    <link
+        href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+        rel="stylesheet"
+    >
+
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="bg-body-tertiary">
@@ -301,13 +306,11 @@ $schedules = $pdo->query("
                         id="doctor-pane"
                         role="tabpanel"
                     >
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                                <h2 class="h5 mb-1">Dokter & Nomor WhatsApp</h2>
-                                <p class="text-secondary small mb-0">
-                                    Nomor ini dipakai oleh sistem reminder.
-                                </p>
-                            </div>
+                        <div class="mb-3">
+                            <h2 class="h5 mb-1">Dokter & Nomor WhatsApp</h2>
+                            <p class="text-secondary small mb-0">
+                                Nomor ini dipakai oleh sistem reminder.
+                            </p>
                         </div>
 
                         <div class="table-responsive">
@@ -424,14 +427,23 @@ $schedules = $pdo->query("
 
                             <div class="col-md-3">
                                 <label class="form-label" for="filterDate">Jadwal</label>
-                                <input
-                                    type="text"
-                                    id="filterDate"
-                                    class="form-control"
-                                    placeholder="DD-MM-YYYY"
-                                    inputmode="numeric"
-                                    maxlength="10"
-                                >
+                                <div class="input-group">
+                                    <input
+                                        type="text"
+                                        id="filterDate"
+                                        class="form-control"
+                                        placeholder="DD-MM-YYYY"
+                                        autocomplete="off"
+                                    >
+                                    <button
+                                        type="button"
+                                        id="openScheduleCalendar"
+                                        class="btn btn-outline-secondary"
+                                        aria-label="Buka kalender"
+                                    >
+                                        &#128197;
+                                    </button>
+                                </div>
                             </div>
 
                             <div class="col-md-1 d-grid">
@@ -597,6 +609,8 @@ $schedules = $pdo->query("
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/v/bs5/dt-3.0.2/r-4.0.2/datatables.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/id.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -667,6 +681,7 @@ $schedules = $pdo->query("
             const filterPoli = document.getElementById('filterPoli');
             const filterDate = document.getElementById('filterDate');
             const resetScheduleFilter = document.getElementById('resetScheduleFilter');
+            const openScheduleCalendar = document.getElementById('openScheduleCalendar');
 
             function escapeRegex(value) {
                 return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -692,26 +707,31 @@ $schedules = $pdo->query("
                 scheduleTable.draw();
             }
 
+            const scheduleDatePicker = flatpickr(filterDate, {
+                locale: 'id',
+                dateFormat: 'd-m-Y',
+                allowInput: true,
+                clickOpens: true,
+                onChange: function () {
+                    applyScheduleFilters();
+                },
+                onClose: function () {
+                    applyScheduleFilters();
+                }
+            });
+
+            openScheduleCalendar.addEventListener('click', function () {
+                scheduleDatePicker.open();
+            });
+
             filterDoctor.addEventListener('change', applyScheduleFilters);
             filterPoli.addEventListener('change', applyScheduleFilters);
-
-            filterDate.addEventListener('input', function () {
-                let value = this.value.replace(/\D/g, '').slice(0, 8);
-
-                if (value.length > 4) {
-                    value = value.slice(0, 2) + '-' + value.slice(2, 4) + '-' + value.slice(4);
-                } else if (value.length > 2) {
-                    value = value.slice(0, 2) + '-' + value.slice(2);
-                }
-
-                this.value = value;
-                applyScheduleFilters();
-            });
+            filterDate.addEventListener('input', applyScheduleFilters);
 
             resetScheduleFilter.addEventListener('click', function () {
                 $('#filterDoctor').val(null).trigger('change.select2');
                 $('#filterPoli').val(null).trigger('change.select2');
-                filterDate.value = '';
+                scheduleDatePicker.clear();
 
                 scheduleTable.columns().search('');
                 scheduleTable.search('');
