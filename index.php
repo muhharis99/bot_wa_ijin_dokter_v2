@@ -564,6 +564,7 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                                             data-phone="<?= e($phone) ?>"
                                             data-message="<?= e($message) ?>"
                                             data-reminder-id="<?= (int) $reminder['id'] ?>"
+                                            data-doctor-name="<?= e($doctor['nama_dokter']) ?>"
                                         >
                                             <?= $status === 'SENT' ? 'Kirim Ulang WhatsApp' : 'Kirim WhatsApp' ?>
                                         </button>
@@ -590,6 +591,7 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
         const gatewayBaseUrl =
@@ -676,15 +678,54 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                     const phone = this.dataset.phone;
                     const message = this.dataset.message;
                     const reminderId = this.dataset.reminderId;
+                    const doctorName = this.dataset.doctorName || 'dokter';
                     const originalText = this.textContent;
 
                     if (!phone || !message || !reminderId) {
-                        alert('Data WhatsApp belum lengkap.');
+                        await Swal.fire({
+                            icon: 'warning',
+                            title: 'Data belum lengkap',
+                            text: 'Data WhatsApp belum lengkap.',
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#198754'
+                        });
+                        return;
+                    }
+
+                    const confirmation = await Swal.fire({
+                        icon: 'question',
+                        title: 'Kirim WhatsApp?',
+                        html:
+                            'Apakah reminder benar akan dikirim ke <strong>' +
+                            doctorName +
+                            '</strong><br>Nomor: <strong>' +
+                            phone +
+                            '</strong>?',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, Kirim',
+                        cancelButtonText: 'Tidak',
+                        confirmButtonColor: '#198754',
+                        cancelButtonColor: '#6c757d',
+                        reverseButtons: true,
+                        focusCancel: true
+                    });
+
+                    if (!confirmation.isConfirmed) {
                         return;
                     }
 
                     this.disabled = true;
                     this.textContent = 'Mengirim...';
+
+                    Swal.fire({
+                        title: 'Mengirim WhatsApp',
+                        text: 'Mohon tunggu...',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        didOpen: function () {
+                            Swal.showLoading();
+                        }
+                    });
 
                     try {
                         const response = await fetch(
@@ -710,21 +751,28 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                             );
                         }
 
-                        alert(
-                            'WhatsApp berhasil dikirim ke ' +
-                            phone +
-                            '.'
-                        );
+                        await Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'WhatsApp berhasil dikirim ke ' + phone + '.',
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#198754'
+                        });
 
                         window.location.href =
                             'index.php?<?= $encodedFilterQuery ?>' +
                             '&action=sent&id=' +
                             encodeURIComponent(reminderId);
                     } catch (error) {
-                        alert(
-                            error.message ||
-                            'Gagal menghubungi WhatsApp Gateway.'
-                        );
+                        await Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Mengirim',
+                            text:
+                                error.message ||
+                                'Gagal menghubungi WhatsApp Gateway.',
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#dc3545'
+                        });
 
                         window.location.href =
                             'index.php?<?= $encodedFilterQuery ?>' +
