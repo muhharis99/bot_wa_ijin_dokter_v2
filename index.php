@@ -239,6 +239,16 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
         rel="stylesheet"
     >
 
+    <link
+        href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+        rel="stylesheet"
+    >
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+        rel="stylesheet"
+    >
+
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="bg-body-tertiary">
@@ -282,11 +292,12 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                             Dokter
                         </label>
                         <select
-                            class="form-select"
+                            class="form-select select2-filter"
                             id="doctorFilter"
                             name="dokter"
+                            data-placeholder="Semua Dokter"
                         >
-                            <option value="">Semua Dokter</option>
+                            <option value=""></option>
                             <?php foreach ($doctorOptions as $doctorOption): ?>
                                 <option
                                     value="<?= e($doctorOption['dokter_kd']) ?>"
@@ -303,11 +314,12 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                             Poli
                         </label>
                         <select
-                            class="form-select"
+                            class="form-select select2-filter"
                             id="poliFilter"
                             name="poli"
+                            data-placeholder="Semua Poli"
                         >
-                            <option value="">Semua Poli</option>
+                            <option value=""></option>
                             <?php foreach ($poliOptions as $poliOption): ?>
                                 <option
                                     value="<?= e($poliOption['poli_nama']) ?>"
@@ -545,7 +557,9 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
         <?= e(APP_NAME) ?> · PHP Native + MySQL + whatsapp-web.js
     </footer>
 
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script>
         const gatewayBaseUrl =
@@ -614,6 +628,22 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
         }
 
         document.addEventListener('DOMContentLoaded', function () {
+            $('.select2-filter').each(function () {
+                const select = $(this);
+
+                select.select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    placeholder: select.data('placeholder'),
+                    allowClear: true,
+                    language: {
+                        noResults: function () {
+                            return 'Data tidak ditemukan';
+                        }
+                    }
+                });
+            });
+
             refreshGatewayStatus();
             setInterval(refreshGatewayStatus, 5000);
 
