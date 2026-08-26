@@ -571,6 +571,65 @@ footer {
     color: var(--gray-800) !important;
 }
 
+#filterDate {
+    min-height: 40px;
+    border-right: 0 !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    background: #ffffff !important;
+}
+
+#openScheduleCalendar {
+    position: relative;
+    width: 42px;
+    min-width: 42px;
+    min-height: 40px;
+    padding: 0;
+    border: 1.5px solid var(--gray-200) !important;
+    border-left: 0 !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    background: #ffffff !important;
+    color: transparent !important;
+    font-size: 0 !important;
+    transform: none !important;
+}
+
+#openScheduleCalendar::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    background-color: var(--primary);
+    transform: translate(-50%, -50%);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='currentColor' d='M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h.5A2.5 2.5 0 0 1 16 3.5v10a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 13.5v-10A2.5 2.5 0 0 1 2.5 1H3V.5a.5.5 0 0 1 .5-.5M1 4v9.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5V4z'/%3E%3C/svg%3E");
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='currentColor' d='M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h.5A2.5 2.5 0 0 1 16 3.5v10a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 13.5v-10A2.5 2.5 0 0 1 2.5 1H3V.5a.5.5 0 0 1 .5-.5M1 4v9.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5V4z'/%3E%3C/svg%3E");
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+}
+
+#openScheduleCalendar:hover,
+#openScheduleCalendar:focus {
+    border-color: var(--primary-light) !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+}
+
+#filterDate:focus {
+    border-color: var(--primary-light) !important;
+    box-shadow: none !important;
+}
+
+#filterDate:focus + #openScheduleCalendar {
+    border-color: var(--primary-light) !important;
+}
+
 @media (max-width: 991.98px) {
     .navbar .nav-link {
         margin: 0.2rem 0;
