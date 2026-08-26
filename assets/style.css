@@ -536,6 +536,41 @@ footer {
     border-color: var(--gray-100);
 }
 
+#masterTabs {
+    gap: 0.35rem;
+    padding: 0.75rem 1rem !important;
+    border-bottom: 1px solid var(--gray-200) !important;
+    background: #ffffff;
+}
+
+#masterTabs .nav-link {
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--gray-600);
+    font-weight: 600;
+}
+
+#masterTabs .nav-link:hover,
+#masterTabs .nav-link:focus {
+    border-color: var(--gray-200);
+    background: var(--gray-50);
+    color: var(--primary);
+}
+
+#masterTabs .nav-link.active {
+    border-color: #b7e2d1;
+    background: var(--primary-pale);
+    color: var(--primary);
+}
+
+.card-header:has(#masterTabs) {
+    padding: 0 !important;
+    border-bottom: 0 !important;
+    background: #ffffff !important;
+    color: var(--gray-800) !important;
+}
+
 @media (max-width: 991.98px) {
     .navbar .nav-link {
         margin: 0.2rem 0;
