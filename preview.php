@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+
 require_once __DIR__ . '/functions.php';
 
 $id = (int) ($_GET['id'] ?? 0);
@@ -11,58 +15,71 @@ if ($id <= 0) {
     exit('ID reminder tidak valid.');
 }
 
-$statement = db()->prepare("
-    SELECT
-        id,
-        doctor_id,
-        tanggal,
-        reminder_type,
-        message,
-        status,
-        created_at,
-        opened_at,
-        sent_at
-    FROM reminders
-    WHERE id = ?
-    LIMIT 1
-");
+try {
+    $statement = db()->prepare("
+        SELECT *
+        FROM reminders
+        WHERE id = ?
+        LIMIT 1
+    ");
 
-$statement->execute([$id]);
-$reminder = $statement->fetch();
+    $statement->execute([$id]);
+    $reminder = $statement->fetch();
 
-if (!$reminder) {
-    http_response_code(404);
-    exit('Reminder tidak ditemukan.');
+    if (!$reminder) {
+        http_response_code(404);
+        exit('Reminder tidak ditemukan.');
+    }
+
+    $doctorName = '';
+    $phoneRaw = '';
+    $doctorId = (string) ($reminder['doctor_id'] ?? '');
+    $reminderDate = (string) ($reminder['tanggal'] ?? '');
+
+    if ($reminderDate !== '') {
+        foreach (schedulesFor($reminderDate) as $schedule) {
+            if ((string) ($schedule['doctor_id'] ?? '') !== $doctorId) {
+                continue;
+            }
+
+            $doctorName = trim((string) ($schedule['nama_dokter'] ?? ''));
+            $phoneRaw = trim((string) ($schedule['no_whatsapp'] ?? ''));
+            break;
+        }
+    }
+
+    $phone = normalizePhone($phoneRaw);
+    $status = (string) ($reminder['status'] ?? 'READY');
+
+    $statusClass = match ($status) {
+        'SENT' => 'success',
+        'FAILED' => 'danger',
+        'OPENED' => 'primary',
+        default => 'secondary'
+    };
+} catch (Throwable $e) {
+    http_response_code(500);
+
+    echo '<!doctype html>';
+    echo '<html lang="id">';
+    echo '<head>';
+    echo '<meta charset="utf-8">';
+    echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
+    echo '<title>Preview Error</title>';
+    echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">';
+    echo '</head>';
+    echo '<body class="bg-light">';
+    echo '<main class="container py-5">';
+    echo '<div class="alert alert-danger">';
+    echo '<h1 class="h5">Preview gagal dimuat</h1>';
+    echo '<div>' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</div>';
+    echo '</div>';
+    echo '<a class="btn btn-secondary" href="index.php">Kembali</a>';
+    echo '</main>';
+    echo '</body>';
+    echo '</html>';
+    exit;
 }
-
-$doctorStatement = get_db('rsi_byl')->prepare("
-    SELECT
-        md.dokter_kd,
-        md.dokter_nama,
-        COALESCE(kd.no_hp, '') AS no_whatsapp
-    FROM master_dokter md
-    LEFT JOIN kontak_dokter kd
-        ON kd.kd_dr = md.dokter_kd
-    WHERE md.dokter_kd = ?
-    LIMIT 1
-");
-
-$doctorStatement->execute([
-    $reminder['doctor_id']
-]);
-
-$doctor = $doctorStatement->fetch() ?: [];
-$doctorName = trim((string) ($doctor['dokter_nama'] ?? ''));
-$phoneRaw = trim((string) ($doctor['no_whatsapp'] ?? ''));
-$phone = normalizePhone($phoneRaw);
-$status = (string) ($reminder['status'] ?? 'READY');
-
-$statusClass = match ($status) {
-    'SENT' => 'success',
-    'FAILED' => 'danger',
-    'OPENED' => 'primary',
-    default => 'secondary'
-};
 ?>
 <!doctype html>
 <html lang="id">
@@ -95,26 +112,27 @@ $statusClass = match ($status) {
                 </span>
 
                 <h1 class="h3 mb-1">
-                    <?= e($doctorName !== '' ? $doctorName : (string) $reminder['doctor_id']) ?>
+                    <?= e($doctorName !== '' ? $doctorName : $doctorId) ?>
                 </h1>
 
                 <div class="d-flex flex-wrap align-items-center gap-2 text-secondary">
-                    <span><?= e($phoneRaw !== '' && $phoneRaw !== '0' ? $phoneRaw : '-') ?></span>
+                    <span>
+                        <?= e($phoneRaw !== '' && $phoneRaw !== '0' ? $phoneRaw : '-') ?>
+                    </span>
                     <span>·</span>
-                    <span><?= e(indoDate((string) $reminder['tanggal'])) ?></span>
+                    <span><?= e(indoDate($reminderDate)) ?></span>
                     <span class="badge text-bg-<?= e($statusClass) ?>">
                         <?= e($status) ?>
                     </span>
                 </div>
             </div>
 
-            <button
+            <a
                 class="btn btn-outline-secondary"
-                type="button"
-                onclick="window.close(); history.back();"
+                href="javascript:history.back()"
             >
                 Kembali
-            </button>
+            </a>
         </div>
 
         <div class="card-modern shadow-sm">
@@ -124,21 +142,25 @@ $statusClass = match ($status) {
 
             <div class="card-body-modern">
                 <div class="message-preview mb-4">
-                    <?= nl2br(e((string) $reminder['message'])) ?>
+                    <?= nl2br(e((string) ($reminder['message'] ?? ''))) ?>
                 </div>
 
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
-                        <div class="small text-secondary mb-1">Nomor Tujuan</div>
+                        <div class="small text-secondary mb-1">
+                            Nomor Tujuan
+                        </div>
                         <div class="fw-semibold">
                             <?= e($phoneRaw !== '' && $phoneRaw !== '0' ? $phoneRaw : 'Tidak tersedia') ?>
                         </div>
                     </div>
 
                     <div class="col-md-6">
-                        <div class="small text-secondary mb-1">Tanggal Jadwal</div>
+                        <div class="small text-secondary mb-1">
+                            Tanggal Jadwal
+                        </div>
                         <div class="fw-semibold">
-                            <?= e(date('d-m-Y', strtotime((string) $reminder['tanggal']))) ?>
+                            <?= e(date('d-m-Y', strtotime($reminderDate))) ?>
                         </div>
                     </div>
                 </div>
@@ -149,7 +171,7 @@ $statusClass = match ($status) {
                             class="btn btn-success"
                             target="_blank"
                             rel="noopener noreferrer"
-                            href="https://wa.me/<?= e($phone) ?>?text=<?= rawurlencode((string) $reminder['message']) ?>"
+                            href="https://wa.me/<?= e($phone) ?>?text=<?= rawurlencode((string) ($reminder['message'] ?? '')) ?>"
                         >
                             Buka WhatsApp
                         </a>
