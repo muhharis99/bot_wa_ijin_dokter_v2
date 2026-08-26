@@ -148,6 +148,16 @@ $schedules = $pdo->query("
         rel="stylesheet"
     >
 
+    <link
+        href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+        rel="stylesheet"
+    >
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+        rel="stylesheet"
+    >
+
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="bg-body-tertiary">
@@ -382,8 +392,12 @@ $schedules = $pdo->query("
                         <div class="row g-2 align-items-end mb-3">
                             <div class="col-md-4">
                                 <label class="form-label" for="filterDoctor">Dokter</label>
-                                <select id="filterDoctor" class="form-select">
-                                    <option value="">Semua Dokter</option>
+                                <select
+                                    id="filterDoctor"
+                                    class="form-select select2-schedule-filter"
+                                    data-placeholder="Semua Dokter"
+                                >
+                                    <option value=""></option>
                                     <?php foreach ($doctors as $doctor): ?>
                                         <option value="<?= e($doctor['dokter_nama']) ?>">
                                             <?= e($doctor['dokter_nama']) ?>
@@ -394,8 +408,12 @@ $schedules = $pdo->query("
 
                             <div class="col-md-4">
                                 <label class="form-label" for="filterPoli">Poli</label>
-                                <select id="filterPoli" class="form-select">
-                                    <option value="">Semua Poli</option>
+                                <select
+                                    id="filterPoli"
+                                    class="form-select select2-schedule-filter"
+                                    data-placeholder="Semua Poli"
+                                >
+                                    <option value=""></option>
                                     <?php foreach ($policies as $policy): ?>
                                         <option value="<?= e($policy['poli_nama']) ?>">
                                             <?= e($policy['poli_nama']) ?>
@@ -575,8 +593,10 @@ $schedules = $pdo->query("
         </div>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/v/bs5/dt-3.0.2/r-4.0.2/datatables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -617,6 +637,22 @@ $schedules = $pdo->query("
                 lengthMenu: [10, 25, 50, 100],
                 order: [[1, 'asc']],
                 language
+            });
+
+            $('.select2-schedule-filter').each(function () {
+                const select = $(this);
+
+                select.select2({
+                    theme: 'bootstrap-5',
+                    width: '100%',
+                    placeholder: select.data('placeholder'),
+                    allowClear: true,
+                    language: {
+                        noResults: function () {
+                            return 'Data tidak ditemukan';
+                        }
+                    }
+                });
             });
 
             document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function (tabButton) {
@@ -673,8 +709,8 @@ $schedules = $pdo->query("
             });
 
             resetScheduleFilter.addEventListener('click', function () {
-                filterDoctor.value = '';
-                filterPoli.value = '';
+                $('#filterDoctor').val(null).trigger('change.select2');
+                $('#filterPoli').val(null).trigger('change.select2');
                 filterDate.value = '';
 
                 scheduleTable.columns().search('');
