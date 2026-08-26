@@ -51,7 +51,9 @@ body {
     padding-bottom: 0.15rem !important;
 }
 
-.navbar-brand {
+.navbar-brand,
+.navbar .navbar-brand,
+.navbar .navbar-brand.text-success {
     color: #ffffff !important;
     font-size: 1.15rem;
     font-weight: 700 !important;
@@ -59,7 +61,11 @@ body {
 }
 
 .navbar-brand:hover,
-.navbar-brand:focus {
+.navbar-brand:focus,
+.navbar .navbar-brand:hover,
+.navbar .navbar-brand:focus,
+.navbar .navbar-brand.text-success:hover,
+.navbar .navbar-brand.text-success:focus {
     color: #ffffff !important;
 }
 
@@ -513,6 +519,14 @@ footer {
     color: var(--primary) !important;
 }
 
+.navbar .text-success,
+.navbar .navbar-brand,
+.navbar .navbar-brand.text-success,
+.navbar .nav-link,
+.navbar .nav-link.active {
+    color: #ffffff !important;
+}
+
 .bg-success,
 .text-bg-success {
     background-color: var(--primary) !important;
@@ -537,13 +551,11 @@ footer {
         font-size: 2rem;
     }
 
-    .card-body,
-    .card-header {
-        padding: 1rem !important;
+    .navbar {
+        padding: 0.65rem 0.8rem;
     }
 
-    .navbar {
-        padding-right: 0.5rem;
-        padding-left: 0.5rem;
+    .card-body {
+        padding: 1rem;
     }
 }
