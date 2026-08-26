@@ -358,8 +358,11 @@ $pdfQuery = http_build_query([
                 });
             });
 
-            printPdfButton.addEventListener('click', function () {
+            printPdfButton.addEventListener('click', function (event) {
+                event.preventDefault();
+
                 const button = this;
+                const url = button.href;
                 const originalHtml = button.innerHTML;
 
                 button.classList.add('disabled');
@@ -378,11 +381,15 @@ $pdfQuery = http_build_query([
                 });
 
                 window.setTimeout(function () {
+                    window.open(url, '_blank');
+                }, 700);
+
+                window.setTimeout(function () {
                     Swal.close();
                     button.classList.remove('disabled');
                     button.removeAttribute('aria-disabled');
                     button.innerHTML = originalHtml;
-                }, 1800);
+                }, 2200);
             });
         });
     </script>
