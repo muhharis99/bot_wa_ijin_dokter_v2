@@ -70,14 +70,12 @@ function reminderTemplate(): string
 {
     $template = setting('template', DEFAULT_TEMPLATE);
 
-    $remove = [
-        'Mohon hadir sesuai jadwal praktik,',
-        'Mohon hadir sesuai jadwal praktik.',
-        'Jika ada perubahan jam, silahkan ketik "Ubah [Nama Poli]: [jam_baru]"',
-        'Jika ada perubahan jam, silakan ketik "Ubah [Nama Poli]: [jam_baru]"'
+    $patterns = [
+        '/^[ \t]*Jika ada perubahan jam,\s*silahkan ketik\s*"Ubah \[Nama Poli\]: \[jam_baru\]"[ \t]*\r?\n?/mi',
+        '/^[ \t]*Jika ada perubahan jam,\s*silakan ketik\s*"Ubah \[Nama Poli\]: \[jam_baru\]"[ \t]*\r?\n?/mi'
     ];
 
-    $template = str_replace($remove, '', $template);
+    $template = preg_replace($patterns, '', $template);
     $template = preg_replace("/\n{3,}/", "\n\n", $template);
 
     return trim($template);
@@ -136,44 +134,8 @@ function schedulesFor(string $date): array
     return $statement->fetchAll();
 }
 
-function createReminder(array $doctor, array $items, string $date): int
+function buildReminderMessage(array $doctor, array $items, string $date): string
 {
-    $pdo = db();
-
-    $doctorStatement = $pdo->prepare("
-        SELECT
-            dokter_kd AS id,
-            dokter_kd AS doctor_id
-        FROM rsi_byl.master_dokter
-        WHERE dokter_kd = ?
-    ");
-
-    $doctorStatement->execute([
-        $doctor['doctor_id']
-    ]);
-
-    $localDoctorId = $doctorStatement->fetchColumn();
-
-    $existsStatement = $pdo->prepare("
-        SELECT id
-        FROM reminders
-        WHERE tanggal = ?
-            AND doctor_id = ?
-            AND reminder_type = ?
-    ");
-
-    $existsStatement->execute([
-        $date,
-        $localDoctorId,
-        'HARI_INI'
-    ]);
-
-    $existingId = $existsStatement->fetchColumn();
-
-    if ($existingId) {
-        return (int) $existingId;
-    }
-
     $rows = '';
 
     foreach ($items as $item) {
@@ -204,6 +166,64 @@ function createReminder(array $doctor, array $items, string $date): int
 
     if (count($items) > 1) {
         $message .= "\n\nJadwal lainnya hari ini:" . $rows;
+    }
+
+    return $message;
+}
+
+function createReminder(array $doctor, array $items, string $date): int
+{
+    $pdo = db();
+
+    $doctorStatement = $pdo->prepare("
+        SELECT
+            dokter_kd AS id,
+            dokter_kd AS doctor_id
+        FROM rsi_byl.master_dokter
+        WHERE dokter_kd = ?
+    ");
+
+    $doctorStatement->execute([
+        $doctor['doctor_id']
+    ]);
+
+    $localDoctorId = $doctorStatement->fetchColumn();
+    $message = buildReminderMessage($doctor, $items, $date);
+
+    $existsStatement = $pdo->prepare("
+        SELECT
+            id,
+            status
+        FROM reminders
+        WHERE tanggal = ?
+            AND doctor_id = ?
+            AND reminder_type = ?
+        LIMIT 1
+    ");
+
+    $existsStatement->execute([
+        $date,
+        $localDoctorId,
+        'HARI_INI'
+    ]);
+
+    $existingReminder = $existsStatement->fetch();
+
+    if ($existingReminder) {
+        if ($existingReminder['status'] !== 'SENT') {
+            $updateStatement = $pdo->prepare("
+                UPDATE reminders
+                SET message = ?
+                WHERE id = ?
+            ");
+
+            $updateStatement->execute([
+                $message,
+                $existingReminder['id']
+            ]);
+        }
+
+        return (int) $existingReminder['id'];
     }
 
     $insertStatement = $pdo->prepare("
