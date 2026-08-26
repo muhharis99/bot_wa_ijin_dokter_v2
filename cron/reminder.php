@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/functions.php';
-$date = date('Y-m-d');
+
+$date = defaultReminderTargetDate();
 ensureReminders($date);
-echo "Reminder siap untuk {$date}\n";
+
+echo "Reminder H-1 siap untuk jadwal {$date}\n";
