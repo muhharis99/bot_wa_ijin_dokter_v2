@@ -177,6 +177,7 @@ $pdfQuery = http_build_query([
 
             <a
                 class="btn btn-success"
+                id="printPdfButton"
                 href="report_pdf.php?<?= e($pdfQuery) ?>"
                 target="_blank"
             >
@@ -186,7 +187,7 @@ $pdfQuery = http_build_query([
 
         <div class="card shadow-sm border-0 mb-3">
             <div class="card-body">
-                <form method="get" class="row g-3 align-items-end">
+                <form method="get" class="row g-3 align-items-end" id="reportFilterForm">
                     <div class="col-md-4">
                         <label class="form-label" for="startDate">Tanggal Awal</label>
                         <input
@@ -225,7 +226,9 @@ $pdfQuery = http_build_query([
                     </div>
 
                     <div class="col-md-2 d-grid">
-                        <button class="btn btn-success" type="submit">Tampilkan</button>
+                        <button class="btn btn-success" type="submit" id="showReportButton">
+                            Tampilkan
+                        </button>
                     </div>
                 </form>
             </div>
@@ -311,6 +314,7 @@ $pdfQuery = http_build_query([
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/v/bs5/dt-3.0.2/r-4.0.2/datatables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -332,6 +336,53 @@ $pdfQuery = http_build_query([
                         previous: 'Sebelumnya'
                     }
                 }
+            });
+
+            const reportFilterForm = document.getElementById('reportFilterForm');
+            const showReportButton = document.getElementById('showReportButton');
+            const printPdfButton = document.getElementById('printPdfButton');
+
+            reportFilterForm.addEventListener('submit', function () {
+                showReportButton.disabled = true;
+                showReportButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Memuat...';
+
+                Swal.fire({
+                    title: 'Memuat Report',
+                    text: 'Mohon tunggu...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: function () {
+                        Swal.showLoading();
+                    }
+                });
+            });
+
+            printPdfButton.addEventListener('click', function () {
+                const button = this;
+                const originalHtml = button.innerHTML;
+
+                button.classList.add('disabled');
+                button.setAttribute('aria-disabled', 'true');
+                button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Membuat PDF...';
+
+                Swal.fire({
+                    title: 'Membuat PDF',
+                    text: 'Report sedang diproses...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: function () {
+                        Swal.showLoading();
+                    }
+                });
+
+                window.setTimeout(function () {
+                    Swal.close();
+                    button.classList.remove('disabled');
+                    button.removeAttribute('aria-disabled');
+                    button.innerHTML = originalHtml;
+                }, 1800);
             });
         });
     </script>
