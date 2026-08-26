@@ -8,12 +8,51 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/functions.php';
 
-$date = $_GET['tanggal'] ?? date('Y-m-d');
+$rawDate = trim($_GET['jadwal'] ?? $_GET['tanggal'] ?? date('d-m-Y'));
+$doctorFilter = trim($_GET['dokter'] ?? '');
+$poliFilter = trim($_GET['poli'] ?? '');
+
+$dateObject = DateTime::createFromFormat('d-m-Y', $rawDate);
+
+if (!$dateObject || $dateObject->format('d-m-Y') !== $rawDate) {
+    $legacyDate = DateTime::createFromFormat('Y-m-d', $rawDate);
+
+    if ($legacyDate && $legacyDate->format('Y-m-d') === $rawDate) {
+        $dateObject = $legacyDate;
+    } else {
+        $dateObject = new DateTime();
+    }
+}
+
+$date = $dateObject->format('Y-m-d');
+$displayDate = $dateObject->format('d-m-Y');
 
 ensureReminders($date);
 
 $pdo = db();
 $pdoRsi = get_db('rsi_byl');
+
+$doctorOptions = $pdoRsi->query("
+    SELECT
+        dokter_kd,
+        dokter_nama
+    FROM master_dokter
+    ORDER BY dokter_nama ASC
+")->fetchAll();
+
+$poliOptions = $pdoRsi->query("
+    SELECT
+        poli_kd,
+        poli_nama
+    FROM master_poli
+    ORDER BY poli_nama ASC
+")->fetchAll();
+
+$filterQuery = http_build_query([
+    'jadwal' => $displayDate,
+    'dokter' => $doctorFilter,
+    'poli' => $poliFilter
+]);
 
 if (isset($_GET['action'], $_GET['id'])) {
     $id = (int) $_GET['id'];
@@ -67,14 +106,29 @@ if (isset($_GET['action'], $_GET['id'])) {
         logAction($id, $status);
     }
 
-    header(
-        'Location: index.php?tanggal=' . urlencode($date)
-    );
-
+    header('Location: index.php?' . $filterQuery);
     exit;
 }
 
 $rows = schedulesFor($date);
+
+$rows = array_values(
+    array_filter(
+        $rows,
+        function (array $row) use ($doctorFilter, $poliFilter): bool {
+            if ($doctorFilter !== '' && ($row['kode_dokter'] ?? '') !== $doctorFilter) {
+                return false;
+            }
+
+            if ($poliFilter !== '' && ($row['nama_poli'] ?? '') !== $poliFilter) {
+                return false;
+            }
+
+            return true;
+        }
+    )
+);
+
 $byDoctor = [];
 
 foreach ($rows as $row) {
@@ -131,7 +185,7 @@ foreach ($byDoctor as $group) {
     $counts[$status]++;
 }
 
-$nextStmt = $pdoRsi->prepare("
+$nextSql = "
     SELECT
         dj.*,
         mp.poli_nama AS lokasi,
@@ -147,15 +201,31 @@ $nextStmt = $pdoRsi->prepare("
         ON mp.poli_kd = dj.poli_kd
     WHERE djk.tanggal > ?
         AND djk.aktif = '1'
+";
+
+$nextParams = [$date];
+
+if ($doctorFilter !== '') {
+    $nextSql .= " AND dj.dokter_kd = ?\n";
+    $nextParams[] = $doctorFilter;
+}
+
+if ($poliFilter !== '') {
+    $nextSql .= " AND mp.poli_nama = ?\n";
+    $nextParams[] = $poliFilter;
+}
+
+$nextSql .= "
     ORDER BY
         djk.tanggal ASC,
         dj.jam_mulai ASC
     LIMIT 1
-");
+";
 
-$nextStmt->execute([$date]);
+$nextStmt = $pdoRsi->prepare($nextSql);
+$nextStmt->execute($nextParams);
 $next = $nextStmt->fetch() ?: null;
-$encodedDate = urlencode($date);
+$encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
 ?>
 <!doctype html>
 <html lang="id">
@@ -198,24 +268,84 @@ $encodedDate = urlencode($date);
     </nav>
 
     <main class="container py-4 py-lg-5">
-        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
-            <div>
+        <div class="row g-3 align-items-end mb-4">
+            <div class="col-12 col-xl-4">
                 <span class="badge text-bg-success-subtle text-success mb-2">DAILY OPERATIONS</span>
                 <h1 class="h3 mb-1">Reminder Jadwal Dokter</h1>
                 <p class="text-secondary mb-0"><?= e(indoDate($date)) ?></p>
             </div>
 
-            <form class="d-flex gap-2" method="get">
-                <input
-                    class="form-control"
-                    type="date"
-                    name="tanggal"
-                    value="<?= e($date) ?>"
-                >
-                <button class="btn btn-success" type="submit">
-                    Tampilkan
-                </button>
-            </form>
+            <div class="col-12 col-xl-8">
+                <form method="get" class="row g-2 justify-content-xl-end">
+                    <div class="col-12 col-md-4 col-xl-3">
+                        <label class="form-label small text-secondary mb-1" for="doctorFilter">
+                            Dokter
+                        </label>
+                        <select
+                            class="form-select"
+                            id="doctorFilter"
+                            name="dokter"
+                        >
+                            <option value="">Semua Dokter</option>
+                            <?php foreach ($doctorOptions as $doctorOption): ?>
+                                <option
+                                    value="<?= e($doctorOption['dokter_kd']) ?>"
+                                    <?= $doctorFilter === $doctorOption['dokter_kd'] ? 'selected' : '' ?>
+                                >
+                                    <?= e($doctorOption['dokter_nama']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-4 col-xl-3">
+                        <label class="form-label small text-secondary mb-1" for="poliFilter">
+                            Poli
+                        </label>
+                        <select
+                            class="form-select"
+                            id="poliFilter"
+                            name="poli"
+                        >
+                            <option value="">Semua Poli</option>
+                            <?php foreach ($poliOptions as $poliOption): ?>
+                                <option
+                                    value="<?= e($poliOption['poli_nama']) ?>"
+                                    <?= $poliFilter === $poliOption['poli_nama'] ? 'selected' : '' ?>
+                                >
+                                    <?= e($poliOption['poli_nama']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-4 col-xl-3">
+                        <label class="form-label small text-secondary mb-1" for="scheduleDate">
+                            Jadwal
+                        </label>
+                        <input
+                            class="form-control"
+                            id="scheduleDate"
+                            type="text"
+                            name="jadwal"
+                            value="<?= e($displayDate) ?>"
+                            placeholder="DD-MM-YYYY"
+                            inputmode="numeric"
+                            maxlength="10"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="col-12 col-xl-auto d-flex gap-2 align-items-end">
+                        <button class="btn btn-success" type="submit">
+                            Tampilkan
+                        </button>
+                        <a class="btn btn-outline-secondary" href="index.php">
+                            Reset
+                        </a>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <div class="card shadow-sm border-0 mb-4">
@@ -309,6 +439,14 @@ $encodedDate = urlencode($date);
         </div>
 
         <div class="row g-3">
+            <?php if (empty($byDoctor)): ?>
+                <div class="col-12">
+                    <div class="alert alert-light border text-center py-4">
+                        Tidak ada jadwal yang sesuai dengan filter.
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <?php foreach ($byDoctor as $group): ?>
                 <?php
                 $schedules = $group['schedules'];
@@ -416,8 +554,28 @@ $encodedDate = urlencode($date);
         const gatewayLink = document.getElementById('gatewayLink');
         const gatewayStatus = document.getElementById('gatewayStatus');
         const gatewayDot = document.getElementById('gatewayDot');
+        const scheduleDate = document.getElementById('scheduleDate');
 
         gatewayLink.href = gatewayBaseUrl + '/';
+
+        scheduleDate.addEventListener('input', function () {
+            let value = this.value.replace(/\D/g, '').slice(0, 8);
+            const parts = [];
+
+            if (value.length > 0) {
+                parts.push(value.slice(0, 2));
+            }
+
+            if (value.length > 2) {
+                parts.push(value.slice(2, 4));
+            }
+
+            if (value.length > 4) {
+                parts.push(value.slice(4, 8));
+            }
+
+            this.value = parts.join('-');
+        });
 
         async function refreshGatewayStatus() {
             try {
@@ -505,7 +663,7 @@ $encodedDate = urlencode($date);
                         );
 
                         window.location.href =
-                            'index.php?tanggal=<?= $encodedDate ?>' +
+                            'index.php?<?= $encodedFilterQuery ?>' +
                             '&action=sent&id=' +
                             encodeURIComponent(reminderId);
                     } catch (error) {
@@ -515,7 +673,7 @@ $encodedDate = urlencode($date);
                         );
 
                         window.location.href =
-                            'index.php?tanggal=<?= $encodedDate ?>' +
+                            'index.php?<?= $encodedFilterQuery ?>' +
                             '&action=failed&id=' +
                             encodeURIComponent(reminderId);
                     } finally {
