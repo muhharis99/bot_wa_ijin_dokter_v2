@@ -10,8 +10,10 @@ $saved = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach (['nama_rs', 'template'] as $key) {
         $statement = $pdo->prepare("
-            INSERT INTO settings (`key`, `value`)
-            VALUES (?, ?)
+            INSERT INTO settings (
+                `key`,
+                `value`
+            ) VALUES (?, ?)
             ON DUPLICATE KEY UPDATE
                 `value` = VALUES(`value`)
         ");
@@ -31,56 +33,117 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Template Pesan</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
     <link rel="stylesheet" href="assets/style.css">
 </head>
-<body>
-    <header>
-        <div>
-            <span class="eyebrow">KONFIGURASI</span>
-            <h1>Template WhatsApp</h1>
-            <p>Pesan yang dipakai saat membuat reminder baru.</p>
+<body class="bg-body-tertiary">
+    <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
+        <div class="container py-2">
+            <a class="navbar-brand fw-bold text-success" href="index.php">
+                <?= e(APP_NAME) ?>
+            </a>
+
+            <button
+                class="navbar-toggler"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#mainNavbar"
+            >
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="mainNavbar">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="index.php">Dashboard</a>
+                    <a class="nav-link" href="master.php">Master Data</a>
+                    <a class="nav-link active fw-semibold" href="settings.php">Template</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container py-4 py-lg-5 page-narrow">
+        <div class="mb-4">
+            <span class="badge text-bg-success-subtle text-success mb-2">KONFIGURASI</span>
+            <h1 class="h3 mb-1">Template WhatsApp</h1>
+            <p class="text-secondary mb-0">
+                Pesan ini dipakai saat sistem membuat reminder baru.
+            </p>
         </div>
 
-        <nav>
-            <a href="index.php">Dashboard</a>
-            <a href="master.php">Master Data</a>
-            <a class="active" href="settings.php">Template</a>
-        </nav>
-    </header>
-
-    <main class="narrow">
-        <a class="back" href="index.php">
-            ← Kembali ke dashboard
-        </a>
-
         <?php if ($saved): ?>
-            <div class="notice">
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
                 Pengaturan berhasil disimpan. Reminder yang sudah dibuat tidak berubah.
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                ></button>
             </div>
         <?php endif; ?>
 
-        <form method="post" class="panel">
-            <label>
-                Nama rumah sakit
-                <input
-                    name="nama_rs"
-                    value="<?= e(setting('nama_rs', 'RS Sehat Sentosa')) ?>"
-                >
-            </label>
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <form method="post">
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold" for="hospitalName">
+                            Nama rumah sakit
+                        </label>
+                        <input
+                            class="form-control"
+                            id="hospitalName"
+                            name="nama_rs"
+                            value="<?= e(setting('nama_rs', 'RS Sehat Sentosa')) ?>"
+                            required
+                        >
+                    </div>
 
-            <label>
-                Template pesan
-                <textarea name="template" rows="16"><?= e(setting('template', DEFAULT_TEMPLATE)) ?></textarea>
-            </label>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="messageTemplate">
+                            Template pesan
+                        </label>
+                        <textarea
+                            class="form-control font-monospace"
+                            id="messageTemplate"
+                            name="template"
+                            rows="16"
+                            required
+                        ><?= e(setting('template', DEFAULT_TEMPLATE)) ?></textarea>
+                    </div>
 
-            <p class="muted">
-                Variabel: {{nama_dokter}}, {{spesialis}}, {{tanggal}}, {{hari}}, {{nama_poli}}, {{jam_mulai}}, {{jam_selesai}}, {{lokasi}}, {{nama_rs}}
-            </p>
+                    <div class="alert alert-light border small">
+                        <div class="fw-semibold mb-2">Variabel yang dapat digunakan</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <code>{{nama_dokter}}</code>
+                            <code>{{spesialis}}</code>
+                            <code>{{tanggal}}</code>
+                            <code>{{hari}}</code>
+                            <code>{{nama_poli}}</code>
+                            <code>{{jam_mulai}}</code>
+                            <code>{{jam_selesai}}</code>
+                            <code>{{lokasi}}</code>
+                            <code>{{nama_rs}}</code>
+                        </div>
+                    </div>
 
-            <button class="button">
-                Simpan template
-            </button>
-        </form>
+                    <div class="d-flex justify-content-end gap-2">
+                        <a class="btn btn-light" href="index.php">
+                            Kembali
+                        </a>
+                        <button class="btn btn-success" type="submit">
+                            Simpan Template
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
