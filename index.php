@@ -277,6 +277,7 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                     <a class="nav-link active fw-semibold" href="index.php">Dashboard</a>
                     <a class="nav-link" href="master.php">Master Data</a>
                     <a class="nav-link" href="settings.php">Template</a>
+                    <a class="nav-link" href="report.php">Report</a>
                 </div>
             </div>
         </div>
