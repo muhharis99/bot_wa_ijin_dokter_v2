@@ -9,17 +9,6 @@ function preview_escape($value)
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
-function preview_phone($phone)
-{
-    $phone = preg_replace('/\D+/', '', (string) $phone);
-
-    if (strpos($phone, '0') === 0) {
-        $phone = '62' . substr($phone, 1);
-    }
-
-    return $phone;
-}
-
 if ($id <= 0) {
     http_response_code(400);
     exit('ID reminder tidak valid.');
@@ -45,7 +34,29 @@ try {
     exit('Preview gagal dimuat: ' . preview_escape($e->getMessage()));
 }
 
-$doctorId = isset($reminder['doctor_id']) ? (string) $reminder['doctor_id'] : '-';
+$doctorId = isset($reminder['doctor_id']) ? (string) $reminder['doctor_id'] : '';
+$doctorName = $doctorId;
+
+if ($doctorId !== '') {
+    try {
+        $doctorStatement = get_db('rsi_byl')->prepare("
+            SELECT dokter_nama
+            FROM master_dokter
+            WHERE dokter_kd = ?
+            LIMIT 1
+        ");
+
+        $doctorStatement->execute([$doctorId]);
+        $doctorResult = $doctorStatement->fetch(PDO::FETCH_ASSOC);
+
+        if ($doctorResult && !empty($doctorResult['dokter_nama'])) {
+            $doctorName = (string) $doctorResult['dokter_nama'];
+        }
+    } catch (Exception $e) {
+        $doctorName = $doctorId;
+    }
+}
+
 $date = isset($reminder['tanggal']) ? (string) $reminder['tanggal'] : '';
 $message = isset($reminder['message']) ? (string) $reminder['message'] : '';
 $status = isset($reminder['status']) ? (string) $reminder['status'] : 'READY';
@@ -92,7 +103,7 @@ if ($status === 'SENT') {
                 </span>
 
                 <h1 class="h3 mb-1">
-                    Reminder Dokter <?= preview_escape($doctorId) ?>
+                    <?= preview_escape($doctorName) ?>
                 </h1>
 
                 <div class="d-flex flex-wrap align-items-center gap-2 text-secondary">
