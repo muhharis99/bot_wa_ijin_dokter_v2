@@ -39,6 +39,35 @@ function normalizePhone(value) {
     return phone;
 }
 
+function now() {
+    return new Intl.DateTimeFormat('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    }).format(new Date());
+}
+
+function terminalLog(status, data = {}) {
+    const lines = [
+        '',
+        '============================================================',
+        `[${now()}] ${status}`
+    ];
+
+    Object.entries(data).forEach(([key, value]) => {
+        lines.push(`${key}: ${value ?? '-'}`);
+    });
+
+    lines.push('============================================================');
+
+    console.log(lines.join('\n'));
+}
+
 client.on('qr', async (qr) => {
     try {
         qrDataUrl = await QRCode.toDataURL(qr, {
@@ -208,8 +237,24 @@ app.get('/status', (req, res) => {
 });
 
 app.post('/send', async (req, res) => {
+    const phone = normalizePhone(req.body.phone);
+    const message = String(req.body.message || '').trim();
+
+    terminalLog('PERMINTAAN KIRIM WHATSAPP', {
+        Status: 'MEMPROSES',
+        Tujuan: phone || '-',
+        PanjangPesan: message.length
+    });
+
     try {
         if (waState !== 'READY') {
+            terminalLog('WHATSAPP GAGAL DIKIRIM', {
+                Status: 'GAGAL',
+                Tujuan: phone || '-',
+                Alasan: 'WhatsApp gateway belum READY',
+                Gateway: waState
+            });
+
             return res.status(503).json({
                 success: false,
                 message: 'WhatsApp belum terhubung. Scan QR terlebih dahulu.',
@@ -217,10 +262,13 @@ app.post('/send', async (req, res) => {
             });
         }
 
-        const phone = normalizePhone(req.body.phone);
-        const message = String(req.body.message || '').trim();
-
         if (!phone) {
+            terminalLog('WHATSAPP GAGAL DIKIRIM', {
+                Status: 'GAGAL',
+                Tujuan: '-',
+                Alasan: 'Nomor WhatsApp kosong'
+            });
+
             return res.status(422).json({
                 success: false,
                 message: 'Nomor WhatsApp kosong.'
@@ -228,6 +276,12 @@ app.post('/send', async (req, res) => {
         }
 
         if (!/^62\d{8,15}$/.test(phone)) {
+            terminalLog('WHATSAPP GAGAL DIKIRIM', {
+                Status: 'GAGAL',
+                Tujuan: phone,
+                Alasan: 'Format nomor WhatsApp tidak valid'
+            });
+
             return res.status(422).json({
                 success: false,
                 message: 'Format nomor WhatsApp tidak valid.'
@@ -235,6 +289,12 @@ app.post('/send', async (req, res) => {
         }
 
         if (!message) {
+            terminalLog('WHATSAPP GAGAL DIKIRIM', {
+                Status: 'GAGAL',
+                Tujuan: phone,
+                Alasan: 'Pesan WhatsApp kosong'
+            });
+
             return res.status(422).json({
                 success: false,
                 message: 'Pesan WhatsApp kosong.'
@@ -244,6 +304,12 @@ app.post('/send', async (req, res) => {
         const numberId = await client.getNumberId(phone);
 
         if (!numberId) {
+            terminalLog('WHATSAPP GAGAL DIKIRIM', {
+                Status: 'GAGAL',
+                Tujuan: phone,
+                Alasan: 'Nomor tidak terdaftar di WhatsApp'
+            });
+
             return res.status(404).json({
                 success: false,
                 message: 'Nomor tidak terdaftar di WhatsApp.'
@@ -255,14 +321,29 @@ app.post('/send', async (req, res) => {
             message
         );
 
+        const messageId = sentMessage?.id?._serialized || null;
+
+        terminalLog('WHATSAPP BERHASIL DIKIRIM', {
+            Status: 'BERHASIL',
+            Tujuan: phone,
+            MessageId: messageId || '-',
+            Ack: sentMessage?.ack ?? '-'
+        });
+
         return res.json({
             success: true,
             message: 'Pesan WhatsApp berhasil dikirim.',
             phone,
-            messageId: sentMessage?.id?._serialized || null
+            messageId
         });
     } catch (error) {
-        console.error('Gagal mengirim WhatsApp:', error);
+        terminalLog('WHATSAPP GAGAL DIKIRIM', {
+            Status: 'GAGAL',
+            Tujuan: phone || '-',
+            Alasan: error.message || 'Gagal mengirim WhatsApp'
+        });
+
+        console.error(error);
 
         return res.status(500).json({
             success: false,
