@@ -1,14 +1,24 @@
 <?php
 
-declare(strict_types=1);
+require_once __DIR__ . '/db.php';
 
-ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
-error_reporting(E_ALL);
+$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
-require_once __DIR__ . '/functions.php';
+function preview_escape($value)
+{
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+}
 
-$id = (int) ($_GET['id'] ?? 0);
+function preview_phone($phone)
+{
+    $phone = preg_replace('/\D+/', '', (string) $phone);
+
+    if (strpos($phone, '0') === 0) {
+        $phone = '62' . substr($phone, 1);
+    }
+
+    return $phone;
+}
 
 if ($id <= 0) {
     http_response_code(400);
@@ -24,61 +34,31 @@ try {
     ");
 
     $statement->execute([$id]);
-    $reminder = $statement->fetch();
+    $reminder = $statement->fetch(PDO::FETCH_ASSOC);
 
     if (!$reminder) {
         http_response_code(404);
         exit('Reminder tidak ditemukan.');
     }
-
-    $doctorName = '';
-    $phoneRaw = '';
-    $doctorId = (string) ($reminder['doctor_id'] ?? '');
-    $reminderDate = (string) ($reminder['tanggal'] ?? '');
-
-    if ($reminderDate !== '') {
-        foreach (schedulesFor($reminderDate) as $schedule) {
-            if ((string) ($schedule['doctor_id'] ?? '') !== $doctorId) {
-                continue;
-            }
-
-            $doctorName = trim((string) ($schedule['nama_dokter'] ?? ''));
-            $phoneRaw = trim((string) ($schedule['no_whatsapp'] ?? ''));
-            break;
-        }
-    }
-
-    $phone = normalizePhone($phoneRaw);
-    $status = (string) ($reminder['status'] ?? 'READY');
-
-    $statusClass = match ($status) {
-        'SENT' => 'success',
-        'FAILED' => 'danger',
-        'OPENED' => 'primary',
-        default => 'secondary'
-    };
-} catch (Throwable $e) {
+} catch (Exception $e) {
     http_response_code(500);
+    exit('Preview gagal dimuat: ' . preview_escape($e->getMessage()));
+}
 
-    echo '<!doctype html>';
-    echo '<html lang="id">';
-    echo '<head>';
-    echo '<meta charset="utf-8">';
-    echo '<meta name="viewport" content="width=device-width, initial-scale=1">';
-    echo '<title>Preview Error</title>';
-    echo '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">';
-    echo '</head>';
-    echo '<body class="bg-light">';
-    echo '<main class="container py-5">';
-    echo '<div class="alert alert-danger">';
-    echo '<h1 class="h5">Preview gagal dimuat</h1>';
-    echo '<div>' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</div>';
-    echo '</div>';
-    echo '<a class="btn btn-secondary" href="index.php">Kembali</a>';
-    echo '</main>';
-    echo '</body>';
-    echo '</html>';
-    exit;
+$doctorId = isset($reminder['doctor_id']) ? (string) $reminder['doctor_id'] : '-';
+$date = isset($reminder['tanggal']) ? (string) $reminder['tanggal'] : '';
+$message = isset($reminder['message']) ? (string) $reminder['message'] : '';
+$status = isset($reminder['status']) ? (string) $reminder['status'] : 'READY';
+$displayDate = $date !== '' ? date('d-m-Y', strtotime($date)) : '-';
+
+$statusClass = 'secondary';
+
+if ($status === 'SENT') {
+    $statusClass = 'success';
+} elseif ($status === 'FAILED') {
+    $statusClass = 'danger';
+} elseif ($status === 'OPENED') {
+    $statusClass = 'primary';
 }
 ?>
 <!doctype html>
@@ -95,11 +75,11 @@ try {
 
     <link rel="stylesheet" href="assets/style.css">
 </head>
-<body class="bg-body-tertiary">
+<body>
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container py-2">
             <a class="navbar-brand fw-bold" href="index.php">
-                <?= e(APP_NAME) ?>
+                DokterReminder
             </a>
         </div>
     </nav>
@@ -112,25 +92,18 @@ try {
                 </span>
 
                 <h1 class="h3 mb-1">
-                    <?= e($doctorName !== '' ? $doctorName : $doctorId) ?>
+                    Reminder Dokter <?= preview_escape($doctorId) ?>
                 </h1>
 
                 <div class="d-flex flex-wrap align-items-center gap-2 text-secondary">
-                    <span>
-                        <?= e($phoneRaw !== '' && $phoneRaw !== '0' ? $phoneRaw : '-') ?>
-                    </span>
-                    <span>·</span>
-                    <span><?= e(indoDate($reminderDate)) ?></span>
-                    <span class="badge text-bg-<?= e($statusClass) ?>">
-                        <?= e($status) ?>
+                    <span><?= preview_escape($displayDate) ?></span>
+                    <span class="badge text-bg-<?= preview_escape($statusClass) ?>">
+                        <?= preview_escape($status) ?>
                     </span>
                 </div>
             </div>
 
-            <a
-                class="btn btn-outline-secondary"
-                href="javascript:history.back()"
-            >
+            <a class="btn btn-outline-secondary" href="index.php">
                 Kembali
             </a>
         </div>
@@ -141,46 +114,9 @@ try {
             </div>
 
             <div class="card-body-modern">
-                <div class="message-preview mb-4">
-                    <?= nl2br(e((string) ($reminder['message'] ?? ''))) ?>
+                <div class="message-preview mb-0">
+                    <?= nl2br(preview_escape($message)) ?>
                 </div>
-
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <div class="small text-secondary mb-1">
-                            Nomor Tujuan
-                        </div>
-                        <div class="fw-semibold">
-                            <?= e($phoneRaw !== '' && $phoneRaw !== '0' ? $phoneRaw : 'Tidak tersedia') ?>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="small text-secondary mb-1">
-                            Tanggal Jadwal
-                        </div>
-                        <div class="fw-semibold">
-                            <?= e(date('d-m-Y', strtotime($reminderDate))) ?>
-                        </div>
-                    </div>
-                </div>
-
-                <?php if ($phone !== '' && $phoneRaw !== '0'): ?>
-                    <div class="d-flex justify-content-end">
-                        <a
-                            class="btn btn-success"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            href="https://wa.me/<?= e($phone) ?>?text=<?= rawurlencode((string) ($reminder['message'] ?? '')) ?>"
-                        >
-                            Buka WhatsApp
-                        </a>
-                    </div>
-                <?php else: ?>
-                    <div class="alert alert-warning mb-0">
-                        Nomor WhatsApp dokter belum tersedia.
-                    </div>
-                <?php endif; ?>
             </div>
         </div>
     </main>
