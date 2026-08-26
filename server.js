@@ -45,12 +45,18 @@ client.on('qr', async (qr) => {
             width: 320,
             margin: 2
         });
+
         waState = 'QR_READY';
         lastError = null;
-        console.log('QR WhatsApp siap. Buka browser ke http://localhost:' + PORT);
+
+        console.log(
+            'QR WhatsApp siap. Buka browser ke http://localhost:' +
+            PORT
+        );
     } catch (error) {
         lastError = error.message;
         waState = 'ERROR';
+
         console.error('Gagal membuat QR:', error);
     }
 });
@@ -59,6 +65,7 @@ client.on('authenticated', () => {
     waState = 'AUTHENTICATED';
     qrDataUrl = null;
     lastError = null;
+
     console.log('WhatsApp berhasil diautentikasi.');
 });
 
@@ -66,12 +73,14 @@ client.on('ready', () => {
     waState = 'READY';
     qrDataUrl = null;
     lastError = null;
+
     console.log('WhatsApp gateway READY.');
 });
 
 client.on('auth_failure', (message) => {
     waState = 'AUTH_FAILURE';
     lastError = String(message || 'Authentication failure');
+
     console.error('WhatsApp auth failure:', message);
 });
 
@@ -79,6 +88,7 @@ client.on('disconnected', (reason) => {
     waState = 'DISCONNECTED';
     qrDataUrl = null;
     lastError = String(reason || 'Disconnected');
+
     console.warn('WhatsApp disconnected:', reason);
 });
 
@@ -89,25 +99,100 @@ app.get('/', (req, res) => {
             ? 'Scan QR WhatsApp'
             : 'Menyiapkan WhatsApp';
 
+    const qrSection = waState === 'QR_READY' && qrDataUrl
+        ? `
+            <div class="mb-4">
+                <img
+                    class="img-fluid border rounded-3 p-2 bg-white"
+                    src="${qrDataUrl}"
+                    alt="QR WhatsApp"
+                    width="320"
+                    height="320"
+                >
+            </div>
+            <p class="text-secondary mb-0">
+                Buka WhatsApp di HP, pilih Perangkat tertaut, lalu scan QR ini.
+            </p>
+        `
+        : '';
+
+    const readySection = waState === 'READY'
+        ? `
+            <div class="display-3 text-success mb-3">✓</div>
+            <h2 class="h4 mb-2">WhatsApp siap digunakan</h2>
+            <p class="text-secondary mb-0">
+                Dashboard PHP dapat mengirim pesan langsung melalui gateway ini.
+            </p>
+        `
+        : '';
+
+    const waitingSection = waState !== 'QR_READY' && waState !== 'READY'
+        ? `
+            <h2 class="h4 mb-3">${statusLabel}</h2>
+            <p class="text-secondary mb-0">
+                Status: <code>${waState}</code>. Halaman akan memperbarui otomatis.
+            </p>
+        `
+        : '';
+
+    const errorSection = lastError
+        ? `
+            <div class="alert alert-danger mt-4 mb-0">
+                ${String(lastError).replace(/</g, '&lt;')}
+            </div>
+        `
+        : '';
+
     res.send(`<!doctype html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WhatsApp Gateway</title>
-<style>
-body{font-family:Arial,sans-serif;background:#f4f6f8;margin:0;padding:32px;color:#1f2937}.card{max-width:520px;margin:40px auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 8px 30px rgba(0,0,0,.08);text-align:center}.status{display:inline-block;padding:8px 12px;border-radius:999px;background:#eef2f7;font-weight:700;margin-bottom:18px}img{width:320px;max-width:100%;height:auto}.muted{color:#6b7280;font-size:14px;line-height:1.6}.ok{font-size:56px;margin:16px 0}button{border:0;border-radius:8px;padding:10px 14px;cursor:pointer}code{background:#f3f4f6;padding:2px 6px;border-radius:4px}</style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>WhatsApp Gateway</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
 </head>
-<body>
-<div class="card">
-<div class="status">${statusLabel}</div>
-${waState === 'QR_READY' && qrDataUrl ? `<div><img src="${qrDataUrl}" alt="QR WhatsApp"></div><p class="muted">Buka WhatsApp di HP → Perangkat tertaut → Tautkan perangkat, lalu scan QR ini.</p>` : ''}
-${waState === 'READY' ? '<div class="ok">✓</div><h2>WhatsApp siap digunakan</h2><p class="muted">Dashboard PHP sekarang dapat mengirim pesan langsung melalui gateway ini.</p>' : ''}
-${waState !== 'QR_READY' && waState !== 'READY' ? `<h2>${statusLabel}</h2><p class="muted">Status: <code>${waState}</code>. Halaman akan memperbarui otomatis.</p>` : ''}
-${lastError ? `<p class="muted">Error: ${String(lastError).replace(/</g, '&lt;')}</p>` : ''}
-<p><button onclick="location.reload()">Refresh</button></p>
-</div>
-<script>if (${JSON.stringify(waState)} !== 'READY') setTimeout(() => location.reload(), 3000);</script>
+<body class="bg-body-tertiary">
+    <main class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8 col-lg-6">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-4 p-lg-5 text-center">
+                        <span class="badge text-bg-success-subtle text-success mb-3">
+                            ${statusLabel}
+                        </span>
+
+                        ${qrSection}
+                        ${readySection}
+                        ${waitingSection}
+                        ${errorSection}
+
+                        <div class="mt-4">
+                            <button
+                                class="btn btn-outline-secondary btn-sm"
+                                type="button"
+                                onclick="location.reload()"
+                            >
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        if (${JSON.stringify(waState)} !== 'READY') {
+            setTimeout(function () {
+                location.reload();
+            }, 3000);
+        }
+    </script>
 </body>
 </html>`);
 });
@@ -136,24 +221,39 @@ app.post('/send', async (req, res) => {
         const message = String(req.body.message || '').trim();
 
         if (!phone) {
-            return res.status(422).json({ success: false, message: 'Nomor WhatsApp kosong.' });
+            return res.status(422).json({
+                success: false,
+                message: 'Nomor WhatsApp kosong.'
+            });
         }
 
         if (!/^62\d{8,15}$/.test(phone)) {
-            return res.status(422).json({ success: false, message: 'Format nomor WhatsApp tidak valid.' });
+            return res.status(422).json({
+                success: false,
+                message: 'Format nomor WhatsApp tidak valid.'
+            });
         }
 
         if (!message) {
-            return res.status(422).json({ success: false, message: 'Pesan WhatsApp kosong.' });
+            return res.status(422).json({
+                success: false,
+                message: 'Pesan WhatsApp kosong.'
+            });
         }
 
         const numberId = await client.getNumberId(phone);
 
         if (!numberId) {
-            return res.status(404).json({ success: false, message: 'Nomor tidak terdaftar di WhatsApp.' });
+            return res.status(404).json({
+                success: false,
+                message: 'Nomor tidak terdaftar di WhatsApp.'
+            });
         }
 
-        const sentMessage = await client.sendMessage(numberId._serialized, message);
+        const sentMessage = await client.sendMessage(
+            numberId._serialized,
+            message
+        );
 
         return res.json({
             success: true,
@@ -163,6 +263,7 @@ app.post('/send', async (req, res) => {
         });
     } catch (error) {
         console.error('Gagal mengirim WhatsApp:', error);
+
         return res.status(500).json({
             success: false,
             message: error.message || 'Gagal mengirim WhatsApp.'
@@ -171,11 +272,14 @@ app.post('/send', async (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-    console.log(`WhatsApp gateway berjalan di http://localhost:${PORT}`);
+    console.log(
+        `WhatsApp gateway berjalan di http://localhost:${PORT}`
+    );
 });
 
 client.initialize().catch((error) => {
     waState = 'ERROR';
     lastError = error.message;
+
     console.error('Gagal menginisialisasi WhatsApp:', error);
 });
