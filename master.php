@@ -322,6 +322,54 @@ $schedules = $pdo->query("
             </div>
 
             <div class="card-body">
+                <div class="row g-3 align-items-end mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label" for="filterDoctor">Dokter</label>
+                        <select id="filterDoctor" class="form-select">
+                            <option value="">Semua Dokter</option>
+                            <?php foreach ($doctors as $doctor): ?>
+                                <option value="<?= e($doctor['dokter_nama']) ?>">
+                                    <?= e($doctor['dokter_nama']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label" for="filterPoli">Poli</label>
+                        <select id="filterPoli" class="form-select">
+                            <option value="">Semua Poli</option>
+                            <?php foreach ($policies as $policy): ?>
+                                <option value="<?= e($policy['poli_nama']) ?>">
+                                    <?= e($policy['poli_nama']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label" for="filterDate">Jadwal</label>
+                        <input
+                            type="text"
+                            id="filterDate"
+                            class="form-control"
+                            placeholder="DD-MM-YYYY"
+                            inputmode="numeric"
+                            maxlength="10"
+                        >
+                    </div>
+
+                    <div class="col-md-1 d-grid">
+                        <button
+                            type="button"
+                            id="resetScheduleFilter"
+                            class="btn btn-outline-secondary"
+                        >
+                            Reset
+                        </button>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table id="scheduleTable" class="table table-striped table-hover align-middle w-100">
                         <thead>
@@ -338,8 +386,13 @@ $schedules = $pdo->query("
                         </thead>
                         <tbody>
                             <?php foreach ($schedules as $schedule): ?>
+                                <?php
+                                $scheduleDate = date('d-m-Y', strtotime($schedule['tanggal']));
+                                ?>
                                 <tr>
-                                    <td><?= e($schedule['tanggal']) ?></td>
+                                    <td data-order="<?= e($schedule['tanggal']) ?>">
+                                        <?= e($scheduleDate) ?>
+                                    </td>
                                     <td><?= e($schedule['hari']) ?></td>
                                     <td><?= e($schedule['dokter_nama']) ?></td>
                                     <td><?= e($schedule['poli_nama']) ?></td>
@@ -488,7 +541,7 @@ $schedules = $pdo->query("
                 language
             });
 
-            new DataTable('#scheduleTable', {
+            const scheduleTable = new DataTable('#scheduleTable', {
                 responsive: true,
                 pageLength: 25,
                 order: [[0, 'asc'], [4, 'asc']],
@@ -500,6 +553,61 @@ $schedules = $pdo->query("
                 pageLength: 25,
                 order: [[1, 'asc']],
                 language
+            });
+
+            const filterDoctor = document.getElementById('filterDoctor');
+            const filterPoli = document.getElementById('filterPoli');
+            const filterDate = document.getElementById('filterDate');
+            const resetScheduleFilter = document.getElementById('resetScheduleFilter');
+
+            function escapeRegex(value) {
+                return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            function applyScheduleFilters() {
+                const doctor = filterDoctor.value;
+                const poli = filterPoli.value;
+                const date = filterDate.value.trim();
+
+                scheduleTable
+                    .column(2)
+                    .search(doctor ? '^' + escapeRegex(doctor) + '$' : '', true, false);
+
+                scheduleTable
+                    .column(3)
+                    .search(poli ? '^' + escapeRegex(poli) + '$' : '', true, false);
+
+                scheduleTable
+                    .column(0)
+                    .search(date ? '^' + escapeRegex(date) + '$' : '', true, false);
+
+                scheduleTable.draw();
+            }
+
+            filterDoctor.addEventListener('change', applyScheduleFilters);
+            filterPoli.addEventListener('change', applyScheduleFilters);
+
+            filterDate.addEventListener('input', function () {
+                let value = this.value.replace(/\D/g, '').slice(0, 8);
+
+                if (value.length > 4) {
+                    value = value.slice(0, 2) + '-' + value.slice(2, 4) + '-' + value.slice(4);
+                } else if (value.length > 2) {
+                    value = value.slice(0, 2) + '-' + value.slice(2);
+                }
+
+                this.value = value;
+                applyScheduleFilters();
+            });
+
+            resetScheduleFilter.addEventListener('click', function () {
+                filterDoctor.value = '';
+                filterPoli.value = '';
+                filterDate.value = '';
+
+                scheduleTable.columns().search('');
+                scheduleTable.search('');
+                scheduleTable.draw();
             });
 
             const doctorSelect = document.getElementById('doctorSelect');
