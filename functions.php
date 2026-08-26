@@ -66,6 +66,23 @@ function setting(string $key, string $fallback = ''): string
     return (string) ($statement->fetchColumn() ?: $fallback);
 }
 
+function reminderTemplate(): string
+{
+    $template = setting('template', DEFAULT_TEMPLATE);
+
+    $remove = [
+        'Mohon hadir sesuai jadwal praktik,',
+        'Mohon hadir sesuai jadwal praktik.',
+        'Jika ada perubahan jam, silahkan ketik "Ubah [Nama Poli]: [jam_baru]"',
+        'Jika ada perubahan jam, silakan ketik "Ubah [Nama Poli]: [jam_baru]"'
+    ];
+
+    $template = str_replace($remove, '', $template);
+    $template = preg_replace("/\n{3,}/", "\n\n", $template);
+
+    return trim($template);
+}
+
 function schedulesFor(string $date): array
 {
     $statement = get_db('rsi_byl')->prepare("
@@ -181,7 +198,7 @@ function createReminder(array $doctor, array $items, string $date): int
     ];
 
     $message = strtr(
-        setting('template', DEFAULT_TEMPLATE),
+        reminderTemplate(),
         $variables
     );
 
