@@ -6,7 +6,7 @@ ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 require_once __DIR__ . '/functions.php';
 
-$date = $_GET['tanggal'] ?? defaultReminderTargetDate();
+$date = $_GET['tanggal'] ?? date('Y-m-d');
 
 ensureReminders($date);
 
@@ -73,7 +73,7 @@ foreach ($rows as $row) {
 $reminderStmt = $pdo->prepare("SELECT * FROM reminders WHERE doctor_id = ? AND tanggal = ? AND reminder_type = ? LIMIT 1");
 
 foreach ($byDoctor as $doctorId => &$doctorGroup) {
-    $reminderStmt->execute([$doctorId, $date, reminderType()]);
+    $reminderStmt->execute([$doctorId, $date, 'HARI_INI']);
     $doctorGroup['reminder'] = $reminderStmt->fetch() ?: null;
 }
 
@@ -132,8 +132,8 @@ $encodedDate = urlencode($date);
 <header>
     <div>
         <span class="eyebrow">DAILY OPERATIONS</span>
-        <h1>Reminder Jadwal Dokter H-1</h1>
-        <p>Target jadwal: <?= e(indoDate($date)) ?></p>
+        <h1>Reminder Jadwal Dokter</h1>
+        <p><?= e(indoDate($date)) ?></p>
     </div>
     <nav>
         <a class="active" href="index.php">Dashboard</a>
@@ -151,9 +151,9 @@ $encodedDate = urlencode($date);
 
     <section class="hero">
         <div>
-            <span class="eyebrow">REMINDER H-1</span>
-            <h2>Siapa yang praktik besok?</h2>
-            <p>Secara default sistem menampilkan jadwal besok. Pesan reminder dikirim langsung melalui WhatsApp Gateway setelah tombol WhatsApp ditekan.</p>
+            <span class="eyebrow">RINGKASAN HARI INI</span>
+            <h2>Siapa yang praktik hari ini?</h2>
+            <p>Pesan reminder dikirim langsung melalui WhatsApp Gateway setelah tombol WhatsApp ditekan.</p>
         </div>
         <form method="get">
             <input type="date" name="tanggal" value="<?= e($date) ?>">
@@ -171,14 +171,14 @@ $encodedDate = urlencode($date);
 
     <?php if ($next): ?>
         <div class="next">
-            Jadwal berikutnya setelah target: <b><?= e($next['dokter_nama']) ?></b> · <?= e($next['poli_nama']) ?> · <?= e(indoDate($next['tanggal'])) ?> <?= e($next['jam_mulai']) ?>
+            Jadwal berikutnya: <b><?= e($next['dokter_nama']) ?></b> · <?= e($next['poli_nama']) ?> · <?= e(indoDate($next['tanggal'])) ?> <?= e($next['jam_mulai']) ?>
         </div>
     <?php endif; ?>
 
     <div class="section-title">
         <div>
-            <span class="eyebrow">DAFTAR JADWAL H-1</span>
-            <h2>Jadwal dokter <?= e(indoDate($date)) ?></h2>
+            <span class="eyebrow">DAFTAR JADWAL</span>
+            <h2>Jadwal dokter</h2>
         </div>
         <span class="muted"><?= $totalDoctors ?> dokter · <?= $totalSchedules ?> sesi</span>
     </div>
@@ -231,7 +231,7 @@ $encodedDate = urlencode($date);
                                 data-message="<?= e($message) ?>"
                                 data-reminder-id="<?= (int) $reminder['id'] ?>"
                             >
-                                <?= $status === 'SENT' ? 'Kirim Ulang WhatsApp' : 'Kirim WhatsApp H-1' ?>
+                                <?= $status === 'SENT' ? 'Kirim Ulang WhatsApp' : 'Kirim WhatsApp' ?>
                             </a>
                         <?php else: ?>
                             <span class="muted">Nomor WhatsApp tidak tersedia</span>
@@ -243,7 +243,7 @@ $encodedDate = urlencode($date);
     </section>
 </main>
 
-<footer><?= e(APP_NAME) ?> · PHP Native + MySQL + whatsapp-web.js · Reminder H-1</footer>
+<footer><?= e(APP_NAME) ?> · PHP Native + MySQL + whatsapp-web.js</footer>
 
 <script>
 const gatewayBaseUrl = window.location.protocol === 'https:'
@@ -310,7 +310,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     throw new Error(result.message || 'Gagal mengirim WhatsApp.');
                 }
 
-                alert('Reminder H-1 berhasil dikirim ke ' + phone + '.');
+                alert('WhatsApp berhasil dikirim ke ' + phone + '.');
                 window.location.href = 'index.php?tanggal=<?= $encodedDate ?>&action=sent&id=' + encodeURIComponent(reminderId);
             } catch (error) {
                 alert(error.message || 'Gagal menghubungi WhatsApp Gateway.');
