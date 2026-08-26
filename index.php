@@ -249,6 +249,11 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
         rel="stylesheet"
     >
 
+    <link
+        href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+        rel="stylesheet"
+    >
+
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="bg-body-tertiary">
@@ -335,17 +340,40 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                         <label class="form-label small text-secondary mb-1" for="scheduleDate">
                             Jadwal
                         </label>
-                        <input
-                            class="form-control"
-                            id="scheduleDate"
-                            type="text"
-                            name="jadwal"
-                            value="<?= e($displayDate) ?>"
-                            placeholder="DD-MM-YYYY"
-                            inputmode="numeric"
-                            maxlength="10"
-                            autocomplete="off"
-                        >
+                        <div class="input-group">
+                            <input
+                                class="form-control"
+                                id="scheduleDate"
+                                type="text"
+                                name="jadwal"
+                                value="<?= e($displayDate) ?>"
+                                placeholder="DD-MM-YYYY"
+                                autocomplete="off"
+                            >
+                            <button
+                                class="btn btn-outline-secondary"
+                                id="scheduleDateButton"
+                                type="button"
+                                aria-label="Pilih tanggal"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="col-12 col-xl-auto d-flex gap-2 align-items-end">
@@ -560,6 +588,8 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
 
     <script>
         const gatewayBaseUrl =
@@ -569,26 +599,20 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
         const gatewayStatus = document.getElementById('gatewayStatus');
         const gatewayDot = document.getElementById('gatewayDot');
         const scheduleDate = document.getElementById('scheduleDate');
+        const scheduleDateButton = document.getElementById('scheduleDateButton');
 
         gatewayLink.href = gatewayBaseUrl + '/';
 
-        scheduleDate.addEventListener('input', function () {
-            let value = this.value.replace(/\D/g, '').slice(0, 8);
-            const parts = [];
+        const scheduleDatePicker = flatpickr(scheduleDate, {
+            dateFormat: 'd-m-Y',
+            defaultDate: scheduleDate.value,
+            allowInput: true,
+            locale: 'id',
+            disableMobile: true
+        });
 
-            if (value.length > 0) {
-                parts.push(value.slice(0, 2));
-            }
-
-            if (value.length > 2) {
-                parts.push(value.slice(2, 4));
-            }
-
-            if (value.length > 4) {
-                parts.push(value.slice(4, 8));
-            }
-
-            this.value = parts.join('-');
+        scheduleDateButton.addEventListener('click', function () {
+            scheduleDatePicker.open();
         });
 
         async function refreshGatewayStatus() {
