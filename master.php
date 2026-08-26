@@ -176,13 +176,13 @@ $schedules = $pdo->query("
         </div>
     </nav>
 
-    <main class="container py-4 py-lg-5">
-        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <main class="container py-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
             <div>
                 <span class="badge text-bg-success-subtle text-success mb-2">ADMINISTRASI</span>
                 <h1 class="h3 mb-1">Master Data</h1>
                 <p class="text-secondary mb-0">
-                    Kelola nomor WhatsApp dokter dan lihat data poli serta jadwal yang dipakai reminder.
+                    Kelola nomor WhatsApp dokter, jadwal praktik, dan master poli.
                 </p>
             </div>
 
@@ -207,243 +207,304 @@ $schedules = $pdo->query("
             </div>
         <?php endif; ?>
 
-        <div class="row g-3 mb-4">
+        <div class="row g-3 mb-3">
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
+                    <div class="card-body py-3">
                         <div class="text-secondary small">TOTAL DOKTER</div>
-                        <div class="display-6 fw-bold"><?= count($doctors) ?></div>
+                        <div class="h3 fw-bold mb-0"><?= count($doctors) ?></div>
                     </div>
                 </div>
             </div>
 
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
+                    <div class="card-body py-3">
                         <div class="text-secondary small">TOTAL POLI</div>
-                        <div class="display-6 fw-bold"><?= count($policies) ?></div>
+                        <div class="h3 fw-bold mb-0"><?= count($policies) ?></div>
                     </div>
                 </div>
             </div>
 
             <div class="col-md-4">
                 <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
+                    <div class="card-body py-3">
                         <div class="text-secondary small">JADWAL MENDATANG</div>
-                        <div class="display-6 fw-bold"><?= count($schedules) ?></div>
+                        <div class="h3 fw-bold mb-0"><?= count($schedules) ?></div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3">
-                <h2 class="h5 mb-1">Dokter & Nomor WhatsApp</h2>
-                <p class="text-secondary small mb-0">
-                    Nomor pada tabel ini dipakai oleh reminder melalui kontak_dokter.no_hp.
-                </p>
-            </div>
-
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table id="doctorTable" class="table table-striped table-hover align-middle w-100">
-                        <thead>
-                            <tr>
-                                <th>Kode</th>
-                                <th>Nama Dokter</th>
-                                <th>Nomor WhatsApp</th>
-                                <th>Status</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($doctors as $doctor): ?>
-                                <?php
-                                $phone = trim((string) $doctor['no_hp']);
-                                $isActive = $phone !== '' && $phone !== '0';
-                                ?>
-                                <tr>
-                                    <td><?= e($doctor['dokter_kd']) ?></td>
-                                    <td><?= e($doctor['dokter_nama']) ?></td>
-                                    <td><?= e($isActive ? $phone : '-') ?></td>
-                                    <td>
-                                        <?php if ($isActive): ?>
-                                            <span class="badge text-bg-success">Aktif</span>
-                                        <?php else: ?>
-                                            <span class="badge text-bg-secondary">Belum Ada</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex gap-2">
-                                            <button
-                                                type="button"
-                                                class="btn btn-sm btn-outline-primary js-edit-contact"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#contactModal"
-                                                data-doctor-code="<?= e($doctor['dokter_kd']) ?>"
-                                                data-phone="<?= e($isActive ? $phone : '') ?>"
-                                            >
-                                                Edit
-                                            </button>
-
-                                            <?php if ($isActive): ?>
-                                                <form method="post">
-                                                    <input type="hidden" name="action" value="disable_contact">
-                                                    <input
-                                                        type="hidden"
-                                                        name="dokter_kd"
-                                                        value="<?= e($doctor['dokter_kd']) ?>"
-                                                    >
-                                                    <button
-                                                        type="submit"
-                                                        class="btn btn-sm btn-outline-danger"
-                                                        onclick="return confirm('Nonaktifkan nomor WhatsApp dokter ini?')"
-                                                    >
-                                                        Nonaktifkan
-                                                    </button>
-                                                </form>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-white py-3">
-                <h2 class="h5 mb-1">Jadwal Praktik</h2>
-                <p class="text-secondary small mb-0">
-                    Data dibaca langsung dari dokter_jadwal_kuota dan dokter_jadwal.
-                </p>
-            </div>
-
-            <div class="card-body">
-                <div class="row g-3 align-items-end mb-4">
-                    <div class="col-md-4">
-                        <label class="form-label" for="filterDoctor">Dokter</label>
-                        <select id="filterDoctor" class="form-select">
-                            <option value="">Semua Dokter</option>
-                            <?php foreach ($doctors as $doctor): ?>
-                                <option value="<?= e($doctor['dokter_nama']) ?>">
-                                    <?= e($doctor['dokter_nama']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label" for="filterPoli">Poli</label>
-                        <select id="filterPoli" class="form-select">
-                            <option value="">Semua Poli</option>
-                            <?php foreach ($policies as $policy): ?>
-                                <option value="<?= e($policy['poli_nama']) ?>">
-                                    <?= e($policy['poli_nama']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label" for="filterDate">Jadwal</label>
-                        <input
-                            type="text"
-                            id="filterDate"
-                            class="form-control"
-                            placeholder="DD-MM-YYYY"
-                            inputmode="numeric"
-                            maxlength="10"
-                        >
-                    </div>
-
-                    <div class="col-md-1 d-grid">
-                        <button
-                            type="button"
-                            id="resetScheduleFilter"
-                            class="btn btn-outline-secondary"
-                        >
-                            Reset
-                        </button>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table id="scheduleTable" class="table table-striped table-hover align-middle w-100">
-                        <thead>
-                            <tr>
-                                <th>Tanggal</th>
-                                <th>Hari</th>
-                                <th>Dokter</th>
-                                <th>Poli</th>
-                                <th>Jam</th>
-                                <th>Kuota</th>
-                                <th>WhatsApp</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($schedules as $schedule): ?>
-                                <?php
-                                $scheduleDate = date('d-m-Y', strtotime($schedule['tanggal']));
-                                ?>
-                                <tr>
-                                    <td data-order="<?= e($schedule['tanggal']) ?>">
-                                        <?= e($scheduleDate) ?>
-                                    </td>
-                                    <td><?= e($schedule['hari']) ?></td>
-                                    <td><?= e($schedule['dokter_nama']) ?></td>
-                                    <td><?= e($schedule['poli_nama']) ?></td>
-                                    <td>
-                                        <?= e($schedule['jam_mulai']) ?>
-                                        -
-                                        <?= e($schedule['jam_selesai']) ?>
-                                    </td>
-                                    <td><?= e((string) $schedule['kuota_all']) ?></td>
-                                    <td><?= e($schedule['no_hp'] ?: '-') ?></td>
-                                    <td>
-                                        <?php if ((string) $schedule['aktif'] === '1'): ?>
-                                            <span class="badge text-bg-success">Aktif</span>
-                                        <?php else: ?>
-                                            <span class="badge text-bg-secondary">Nonaktif</span>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>
 
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3">
-                <h2 class="h5 mb-1">Master Poli</h2>
-                <p class="text-secondary small mb-0">
-                    Referensi poli yang tersedia pada master_poli.
-                </p>
+            <div class="card-header bg-white p-0">
+                <ul
+                    class="nav nav-tabs border-0 px-3 pt-3"
+                    id="masterTabs"
+                    role="tablist"
+                >
+                    <li class="nav-item" role="presentation">
+                        <button
+                            class="nav-link active"
+                            id="doctor-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#doctor-pane"
+                            type="button"
+                            role="tab"
+                        >
+                            Dokter & WhatsApp
+                        </button>
+                    </li>
+
+                    <li class="nav-item" role="presentation">
+                        <button
+                            class="nav-link"
+                            id="schedule-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#schedule-pane"
+                            type="button"
+                            role="tab"
+                        >
+                            Jadwal Praktik
+                        </button>
+                    </li>
+
+                    <li class="nav-item" role="presentation">
+                        <button
+                            class="nav-link"
+                            id="poli-tab"
+                            data-bs-toggle="tab"
+                            data-bs-target="#poli-pane"
+                            type="button"
+                            role="tab"
+                        >
+                            Master Poli
+                        </button>
+                    </li>
+                </ul>
             </div>
 
             <div class="card-body">
-                <div class="table-responsive">
-                    <table id="poliTable" class="table table-striped table-hover align-middle w-100">
-                        <thead>
-                            <tr>
-                                <th>Kode Poli</th>
-                                <th>Nama Poli</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($policies as $policy): ?>
-                                <tr>
-                                    <td><?= e($policy['poli_kd']) ?></td>
-                                    <td><?= e($policy['poli_nama']) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                <div class="tab-content" id="masterTabsContent">
+                    <div
+                        class="tab-pane fade show active"
+                        id="doctor-pane"
+                        role="tabpanel"
+                    >
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h2 class="h5 mb-1">Dokter & Nomor WhatsApp</h2>
+                                <p class="text-secondary small mb-0">
+                                    Nomor ini dipakai oleh sistem reminder.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table id="doctorTable" class="table table-striped table-hover align-middle w-100">
+                                <thead>
+                                    <tr>
+                                        <th>Kode</th>
+                                        <th>Nama Dokter</th>
+                                        <th>Nomor WhatsApp</th>
+                                        <th>Status</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($doctors as $doctor): ?>
+                                        <?php
+                                        $phone = trim((string) $doctor['no_hp']);
+                                        $isActive = $phone !== '' && $phone !== '0';
+                                        ?>
+                                        <tr>
+                                            <td><?= e($doctor['dokter_kd']) ?></td>
+                                            <td><?= e($doctor['dokter_nama']) ?></td>
+                                            <td><?= e($isActive ? $phone : '-') ?></td>
+                                            <td>
+                                                <?php if ($isActive): ?>
+                                                    <span class="badge text-bg-success">Aktif</span>
+                                                <?php else: ?>
+                                                    <span class="badge text-bg-secondary">Belum Ada</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-sm btn-outline-primary js-edit-contact"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#contactModal"
+                                                        data-doctor-code="<?= e($doctor['dokter_kd']) ?>"
+                                                        data-phone="<?= e($isActive ? $phone : '') ?>"
+                                                    >
+                                                        Edit
+                                                    </button>
+
+                                                    <?php if ($isActive): ?>
+                                                        <form method="post">
+                                                            <input type="hidden" name="action" value="disable_contact">
+                                                            <input
+                                                                type="hidden"
+                                                                name="dokter_kd"
+                                                                value="<?= e($doctor['dokter_kd']) ?>"
+                                                            >
+                                                            <button
+                                                                type="submit"
+                                                                class="btn btn-sm btn-outline-danger"
+                                                                onclick="return confirm('Nonaktifkan nomor WhatsApp dokter ini?')"
+                                                            >
+                                                                Nonaktifkan
+                                                            </button>
+                                                        </form>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div
+                        class="tab-pane fade"
+                        id="schedule-pane"
+                        role="tabpanel"
+                    >
+                        <div class="mb-3">
+                            <h2 class="h5 mb-1">Jadwal Praktik</h2>
+                            <p class="text-secondary small mb-0">
+                                Data jadwal dokter yang akan datang.
+                            </p>
+                        </div>
+
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label" for="filterDoctor">Dokter</label>
+                                <select id="filterDoctor" class="form-select">
+                                    <option value="">Semua Dokter</option>
+                                    <?php foreach ($doctors as $doctor): ?>
+                                        <option value="<?= e($doctor['dokter_nama']) ?>">
+                                            <?= e($doctor['dokter_nama']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label" for="filterPoli">Poli</label>
+                                <select id="filterPoli" class="form-select">
+                                    <option value="">Semua Poli</option>
+                                    <?php foreach ($policies as $policy): ?>
+                                        <option value="<?= e($policy['poli_nama']) ?>">
+                                            <?= e($policy['poli_nama']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label" for="filterDate">Jadwal</label>
+                                <input
+                                    type="text"
+                                    id="filterDate"
+                                    class="form-control"
+                                    placeholder="DD-MM-YYYY"
+                                    inputmode="numeric"
+                                    maxlength="10"
+                                >
+                            </div>
+
+                            <div class="col-md-1 d-grid">
+                                <button
+                                    type="button"
+                                    id="resetScheduleFilter"
+                                    class="btn btn-outline-secondary"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table id="scheduleTable" class="table table-striped table-hover align-middle w-100">
+                                <thead>
+                                    <tr>
+                                        <th>Tanggal</th>
+                                        <th>Hari</th>
+                                        <th>Dokter</th>
+                                        <th>Poli</th>
+                                        <th>Jam</th>
+                                        <th>Kuota</th>
+                                        <th>WhatsApp</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($schedules as $schedule): ?>
+                                        <?php
+                                        $scheduleDate = date('d-m-Y', strtotime($schedule['tanggal']));
+                                        ?>
+                                        <tr>
+                                            <td data-order="<?= e($schedule['tanggal']) ?>">
+                                                <?= e($scheduleDate) ?>
+                                            </td>
+                                            <td><?= e($schedule['hari']) ?></td>
+                                            <td><?= e($schedule['dokter_nama']) ?></td>
+                                            <td><?= e($schedule['poli_nama']) ?></td>
+                                            <td>
+                                                <?= e($schedule['jam_mulai']) ?>
+                                                -
+                                                <?= e($schedule['jam_selesai']) ?>
+                                            </td>
+                                            <td><?= e((string) $schedule['kuota_all']) ?></td>
+                                            <td><?= e($schedule['no_hp'] ?: '-') ?></td>
+                                            <td>
+                                                <?php if ((string) $schedule['aktif'] === '1'): ?>
+                                                    <span class="badge text-bg-success">Aktif</span>
+                                                <?php else: ?>
+                                                    <span class="badge text-bg-secondary">Nonaktif</span>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div
+                        class="tab-pane fade"
+                        id="poli-pane"
+                        role="tabpanel"
+                    >
+                        <div class="mb-3">
+                            <h2 class="h5 mb-1">Master Poli</h2>
+                            <p class="text-secondary small mb-0">
+                                Referensi poli yang tersedia.
+                            </p>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table id="poliTable" class="table table-striped table-hover align-middle w-100">
+                                <thead>
+                                    <tr>
+                                        <th>Kode Poli</th>
+                                        <th>Nama Poli</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($policies as $policy): ?>
+                                        <tr>
+                                            <td><?= e($policy['poli_kd']) ?></td>
+                                            <td><?= e($policy['poli_nama']) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -492,7 +553,7 @@ $schedules = $pdo->query("
                                 required
                             >
                             <div class="form-text">
-                                Nomor 08xx akan otomatis dinormalisasi menjadi 62xx saat dikirim.
+                                Nomor 08xx akan dinormalisasi menjadi 62xx saat dikirim.
                             </div>
                         </div>
                     </div>
@@ -534,25 +595,36 @@ $schedules = $pdo->query("
                 }
             };
 
-            new DataTable('#doctorTable', {
+            const doctorTable = new DataTable('#doctorTable', {
                 responsive: true,
-                pageLength: 25,
+                pageLength: 10,
+                lengthMenu: [10, 25, 50, 100],
                 order: [[1, 'asc']],
                 language
             });
 
             const scheduleTable = new DataTable('#scheduleTable', {
                 responsive: true,
-                pageLength: 25,
+                pageLength: 10,
+                lengthMenu: [10, 25, 50, 100],
                 order: [[0, 'asc'], [4, 'asc']],
                 language
             });
 
-            new DataTable('#poliTable', {
+            const poliTable = new DataTable('#poliTable', {
                 responsive: true,
-                pageLength: 25,
+                pageLength: 10,
+                lengthMenu: [10, 25, 50, 100],
                 order: [[1, 'asc']],
                 language
+            });
+
+            document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function (tabButton) {
+                tabButton.addEventListener('shown.bs.tab', function () {
+                    doctorTable.columns.adjust();
+                    scheduleTable.columns.adjust();
+                    poliTable.columns.adjust();
+                });
             });
 
             const filterDoctor = document.getElementById('filterDoctor');
