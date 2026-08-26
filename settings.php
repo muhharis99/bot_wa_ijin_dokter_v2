@@ -62,6 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <a class="nav-link" href="index.php">Dashboard</a>
                     <a class="nav-link" href="master.php">Master Data</a>
                     <a class="nav-link active fw-semibold" href="settings.php">Template</a>
+                    <a class="nav-link" href="report.php">Report</a>
                 </div>
             </div>
         </div>
