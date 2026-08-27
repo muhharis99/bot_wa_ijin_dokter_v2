@@ -4,7 +4,7 @@ const QRCode = require('qrcode');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 
 const app = express();
-const PORT = Number(process.env.WA_PORT || 3000);
+const PORT = Number(process.env.WA_PORT || 3210);
 const HOST = process.env.WA_HOST || '0.0.0.0';
 
 app.disable('x-powered-by');
