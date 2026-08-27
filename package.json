@@ -5,7 +5,7 @@
   "description": "WhatsApp gateway untuk reminder jadwal dokter",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node --max-old-space-size=192 server.js"
   },
   "engines": {
     "node": ">=18"
