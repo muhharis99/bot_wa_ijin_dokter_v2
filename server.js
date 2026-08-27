@@ -7,12 +7,24 @@ const app = express();
 const PORT = Number(process.env.WA_PORT || 3000);
 const HOST = process.env.WA_HOST || '0.0.0.0';
 
+app.disable('x-powered-by');
 app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '128kb' }));
 
 let waState = 'STARTING';
 let qrDataUrl = null;
 let lastError = null;
+
+const timeFormatter = new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+});
 
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -24,7 +36,21 @@ const client = new Client({
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage'
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-extensions',
+            '--disable-background-networking',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-default-apps',
+            '--disable-sync',
+            '--disable-translate',
+            '--disable-features=Translate,MediaRouter,OptimizationHints,AutofillServerCommunication',
+            '--metrics-recording-only',
+            '--mute-audio',
+            '--no-first-run',
+            '--no-default-browser-check'
         ]
     }
 });
@@ -40,16 +66,7 @@ function normalizePhone(value) {
 }
 
 function now() {
-    return new Intl.DateTimeFormat('id-ID', {
-        timeZone: 'Asia/Jakarta',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-    }).format(new Date());
+    return timeFormatter.format(new Date());
 }
 
 function terminalLog(status, data = {}) {
@@ -71,8 +88,8 @@ function terminalLog(status, data = {}) {
 client.on('qr', async (qr) => {
     try {
         qrDataUrl = await QRCode.toDataURL(qr, {
-            width: 320,
-            margin: 2
+            width: 240,
+            margin: 1
         });
 
         waState = 'QR_READY';
@@ -135,8 +152,8 @@ app.get('/', (req, res) => {
                     class="img-fluid border rounded-3 p-2 bg-white"
                     src="${qrDataUrl}"
                     alt="QR WhatsApp"
-                    width="320"
-                    height="320"
+                    width="240"
+                    height="240"
                 >
             </div>
             <p class="text-secondary mb-0">
@@ -214,12 +231,11 @@ app.get('/', (req, res) => {
         </div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         if (${JSON.stringify(waState)} !== 'READY') {
             setTimeout(function () {
                 location.reload();
-            }, 3000);
+            }, 5000);
         }
     </script>
 </body>
@@ -227,6 +243,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/status', (req, res) => {
+    res.set('Cache-Control', 'no-store');
     res.json({
         success: true,
         state: waState,
@@ -263,12 +280,6 @@ app.post('/send', async (req, res) => {
         }
 
         if (!phone) {
-            terminalLog('WHATSAPP GAGAL DIKIRIM', {
-                Status: 'GAGAL',
-                Tujuan: '-',
-                Alasan: 'Nomor WhatsApp kosong'
-            });
-
             return res.status(422).json({
                 success: false,
                 message: 'Nomor WhatsApp kosong.'
@@ -276,12 +287,6 @@ app.post('/send', async (req, res) => {
         }
 
         if (!/^62\d{8,15}$/.test(phone)) {
-            terminalLog('WHATSAPP GAGAL DIKIRIM', {
-                Status: 'GAGAL',
-                Tujuan: phone,
-                Alasan: 'Format nomor WhatsApp tidak valid'
-            });
-
             return res.status(422).json({
                 success: false,
                 message: 'Format nomor WhatsApp tidak valid.'
@@ -289,12 +294,6 @@ app.post('/send', async (req, res) => {
         }
 
         if (!message) {
-            terminalLog('WHATSAPP GAGAL DIKIRIM', {
-                Status: 'GAGAL',
-                Tujuan: phone,
-                Alasan: 'Pesan WhatsApp kosong'
-            });
-
             return res.status(422).json({
                 success: false,
                 message: 'Pesan WhatsApp kosong.'
@@ -304,12 +303,6 @@ app.post('/send', async (req, res) => {
         const numberId = await client.getNumberId(phone);
 
         if (!numberId) {
-            terminalLog('WHATSAPP GAGAL DIKIRIM', {
-                Status: 'GAGAL',
-                Tujuan: phone,
-                Alasan: 'Nomor tidak terdaftar di WhatsApp'
-            });
-
             return res.status(404).json({
                 success: false,
                 message: 'Nomor tidak terdaftar di WhatsApp.'
@@ -342,8 +335,6 @@ app.post('/send', async (req, res) => {
             Tujuan: phone || '-',
             Alasan: error.message || 'Gagal mengirim WhatsApp'
         });
-
-        console.error(error);
 
         return res.status(500).json({
             success: false,
