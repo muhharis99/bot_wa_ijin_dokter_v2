@@ -4,17 +4,27 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/functions.php';
 
-$startDate = trim($_GET['start_date'] ?? date('Y-m-01'));
-$endDate = trim($_GET['end_date'] ?? date('Y-m-d'));
+function parseReportDate(string $value, string $fallback): string
+{
+    foreach (['d-m-Y', 'Y-m-d'] as $format) {
+        $date = DateTime::createFromFormat($format, $value);
+
+        if ($date && $date->format($format) === $value) {
+            return $date->format('Y-m-d');
+        }
+    }
+
+    return $fallback;
+}
+
+$rawStartDate = trim($_GET['start_date'] ?? date('d-m-Y', strtotime('first day of this month')));
+$rawEndDate = trim($_GET['end_date'] ?? date('d-m-Y'));
 $status = trim($_GET['status'] ?? '');
 
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) {
-    $startDate = date('Y-m-01');
-}
-
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
-    $endDate = date('Y-m-d');
-}
+$startDate = parseReportDate($rawStartDate, date('Y-m-01'));
+$endDate = parseReportDate($rawEndDate, date('Y-m-d'));
+$displayStartDate = date('d-m-Y', strtotime($startDate));
+$displayEndDate = date('d-m-Y', strtotime($endDate));
 
 $allowedStatuses = ['', 'PENDING', 'READY', 'OPENED', 'SENT', 'FAILED'];
 
@@ -136,6 +146,21 @@ $pdfQuery = http_build_query([
         rel="stylesheet"
     >
 
+    <link
+        href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+        rel="stylesheet"
+    >
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+        rel="stylesheet"
+    >
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+        rel="stylesheet"
+    >
+
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="bg-body-tertiary">
@@ -190,29 +215,88 @@ $pdfQuery = http_build_query([
                 <form method="get" class="row g-3 align-items-end" id="reportFilterForm">
                     <div class="col-md-4">
                         <label class="form-label" for="startDate">Tanggal Awal</label>
-                        <input
-                            type="date"
-                            class="form-control"
-                            id="startDate"
-                            name="start_date"
-                            value="<?= e($startDate) ?>"
-                        >
+                        <div class="input-group">
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="startDate"
+                                name="start_date"
+                                value="<?= e($displayStartDate) ?>"
+                                placeholder="DD-MM-YYYY"
+                                autocomplete="off"
+                            >
+                            <button
+                                class="btn btn-outline-secondary"
+                                id="startDateButton"
+                                type="button"
+                                aria-label="Pilih tanggal awal"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="col-md-4">
                         <label class="form-label" for="endDate">Tanggal Akhir</label>
-                        <input
-                            type="date"
-                            class="form-control"
-                            id="endDate"
-                            name="end_date"
-                            value="<?= e($endDate) ?>"
-                        >
+                        <div class="input-group">
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="endDate"
+                                name="end_date"
+                                value="<?= e($displayEndDate) ?>"
+                                placeholder="DD-MM-YYYY"
+                                autocomplete="off"
+                            >
+                            <button
+                                class="btn btn-outline-secondary"
+                                id="endDateButton"
+                                type="button"
+                                aria-label="Pilih tanggal akhir"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="col-md-2">
                         <label class="form-label" for="status">Status</label>
-                        <select class="form-select" id="status" name="status">
+                        <select
+                            class="form-select select2-status"
+                            id="status"
+                            name="status"
+                            data-placeholder="Semua Status"
+                        >
                             <option value="">Semua Status</option>
                             <?php foreach (['PENDING', 'READY', 'OPENED', 'SENT', 'FAILED'] as $item): ?>
                                 <option
@@ -312,13 +396,52 @@ $pdfQuery = http_build_query([
         </div>
     </main>
 
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/v/bs5/dt-3.0.2/r-4.0.2/datatables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="assets/back-to-top.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const startDate = document.getElementById('startDate');
+            const endDate = document.getElementById('endDate');
+            const startDateButton = document.getElementById('startDateButton');
+            const endDateButton = document.getElementById('endDateButton');
+
+            const startDatePicker = flatpickr(startDate, {
+                dateFormat: 'd-m-Y',
+                defaultDate: startDate.value,
+                allowInput: true,
+                locale: 'id',
+                disableMobile: true
+            });
+
+            const endDatePicker = flatpickr(endDate, {
+                dateFormat: 'd-m-Y',
+                defaultDate: endDate.value,
+                allowInput: true,
+                locale: 'id',
+                disableMobile: true
+            });
+
+            startDateButton.addEventListener('click', function () {
+                startDatePicker.open();
+            });
+
+            endDateButton.addEventListener('click', function () {
+                endDatePicker.open();
+            });
+
+            $('.select2-status').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                minimumResultsForSearch: Infinity
+            });
+
             new DataTable('#reportTable', {
                 responsive: true,
                 pageLength: 25,
