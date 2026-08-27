@@ -129,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <code>{{jam_selesai}}</code>
                             <code>{{lokasi}}</code>
                             <code>{{nama_rs}}</code>
+                            <code>{{inden}}</code>
                         </div>
                     </div>
 
@@ -146,5 +147,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/back-to-top.js"></script>
 </body>
 </html>
