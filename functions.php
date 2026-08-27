@@ -11,7 +11,7 @@ function e(?string $value): string
 
 function indoDate(string $date): string
 {
-    $days = [
+    static $days = [
         'Minggu',
         'Senin',
         'Selasa',
@@ -21,7 +21,7 @@ function indoDate(string $date): string
         'Sabtu'
     ];
 
-    $months = [
+    static $months = [
         'Januari',
         'Februari',
         'Maret',
@@ -57,17 +57,31 @@ function normalizePhone(string $phone): string
 
 function setting(string $key, string $fallback = ''): string
 {
+    static $cache = [];
+
+    if (array_key_exists($key, $cache)) {
+        return $cache[$key] !== '' ? $cache[$key] : $fallback;
+    }
+
     $statement = db()->prepare(
-        'SELECT `value` FROM settings WHERE `key` = ?'
+        'SELECT `value` FROM settings WHERE `key` = ? LIMIT 1'
     );
 
     $statement->execute([$key]);
+    $value = (string) ($statement->fetchColumn() ?: '');
+    $cache[$key] = $value;
 
-    return (string) ($statement->fetchColumn() ?: $fallback);
+    return $value !== '' ? $value : $fallback;
 }
 
 function reminderTemplate(): string
 {
+    static $template = null;
+
+    if ($template !== null) {
+        return $template;
+    }
+
     $template = setting('template', DEFAULT_TEMPLATE);
 
     $patterns = [
@@ -77,8 +91,9 @@ function reminderTemplate(): string
 
     $template = preg_replace($patterns, '', $template);
     $template = preg_replace("/\n{3,}/", "\n\n", $template);
+    $template = trim($template);
 
-    return trim($template);
+    return $template;
 }
 
 function schedulesFor(string $date): array
@@ -92,7 +107,6 @@ function schedulesFor(string $date): array
             mp.poli_nama AS lokasi,
             dj.dokter_kd AS kode_dokter,
             md.dokter_nama AS nama_dokter,
-            '' AS no_whatsapp,
             '' AS spesialis,
             mp.poli_nama AS nama_poli,
             md.dokter_kd AS doctor_id,
@@ -102,17 +116,17 @@ function schedulesFor(string $date): array
                 kd.no_hp
             ) AS no_whatsapp
         FROM dokter_jadwal_kuota djk
-        LEFT JOIN dokter_jadwal dj
+        INNER JOIN dokter_jadwal dj
             ON dj.id = djk.dokter_jadwal_id
-        LEFT JOIN master_dokter md
+        INNER JOIN master_dokter md
             ON md.dokter_kd = dj.dokter_kd
         LEFT JOIN master_poli mp
             ON mp.poli_kd = dj.poli_kd
-        LEFT JOIN kontak_dokter kd
+        INNER JOIN kontak_dokter kd
             ON kd.kd_dr = dj.dokter_kd
+            AND kd.no_hp != '0'
         WHERE djk.tanggal = ?
             AND djk.aktif = '1'
-            AND kd.no_hp != '0'
             AND djk.kuota_all > 2
             AND dj.poli_kd NOT IN (
                 'EEG',
@@ -138,17 +152,21 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
 {
     $rows = '';
 
-    foreach ($items as $item) {
-        $rows .= "\n🕐 {$item['jam_mulai']} - {$item['jam_selesai']}\n";
-        $rows .= "   Poli {$item['nama_poli']} — {$item['lokasi']}\n";
+    if (count($items) > 1) {
+        foreach ($items as $item) {
+            $rows .= "\n🕐 {$item['jam_mulai']} - {$item['jam_selesai']}\n";
+            $rows .= "   Poli {$item['nama_poli']} — {$item['lokasi']}\n";
+        }
     }
+
+    $formattedDate = indoDate($date);
 
     $variables = [
         '{{nama_dokter}}' => $doctor['nama_dokter'],
         '{{gelar}}' => '',
         '{{spesialis}}' => $doctor['spesialis'],
-        '{{tanggal}}' => indoDate($date),
-        '{{hari}}' => indoDate($date),
+        '{{tanggal}}' => $formattedDate,
+        '{{hari}}' => $formattedDate,
         '{{nama_poli}}' => $items[0]['nama_poli'],
         '{{jam_mulai}}' => $items[0]['jam_mulai'],
         '{{jam_selesai}}' => $items[0]['jam_selesai'],
@@ -164,7 +182,7 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         $variables
     );
 
-    if (count($items) > 1) {
+    if ($rows !== '') {
         $message .= "\n\nJadwal lainnya hari ini:" . $rows;
     }
 
@@ -174,26 +192,14 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
 function createReminder(array $doctor, array $items, string $date): int
 {
     $pdo = db();
-
-    $doctorStatement = $pdo->prepare("
-        SELECT
-            dokter_kd AS id,
-            dokter_kd AS doctor_id
-        FROM rsi_byl.master_dokter
-        WHERE dokter_kd = ?
-    ");
-
-    $doctorStatement->execute([
-        $doctor['doctor_id']
-    ]);
-
-    $localDoctorId = $doctorStatement->fetchColumn();
+    $localDoctorId = (string) $doctor['doctor_id'];
     $message = buildReminderMessage($doctor, $items, $date);
 
     $existsStatement = $pdo->prepare("
         SELECT
             id,
-            status
+            status,
+            message
         FROM reminders
         WHERE tanggal = ?
             AND doctor_id = ?
@@ -210,7 +216,10 @@ function createReminder(array $doctor, array $items, string $date): int
     $existingReminder = $existsStatement->fetch();
 
     if ($existingReminder) {
-        if ($existingReminder['status'] !== 'SENT') {
+        if (
+            $existingReminder['status'] !== 'SENT' &&
+            $existingReminder['message'] !== $message
+        ) {
             $updateStatement = $pdo->prepare("
                 UPDATE reminders
                 SET message = ?
@@ -249,11 +258,12 @@ function createReminder(array $doctor, array $items, string $date): int
     return (int) $pdo->lastInsertId();
 }
 
-function ensureReminders(string $date): void
+function ensureReminders(string $date, ?array $scheduleRows = null): array
 {
+    $rows = $scheduleRows ?? schedulesFor($date);
     $groups = [];
 
-    foreach (schedulesFor($date) as $row) {
+    foreach ($rows as $row) {
         $groups[$row['doctor_id']][] = $row;
     }
 
@@ -264,6 +274,8 @@ function ensureReminders(string $date): void
             $date
         );
     }
+
+    return $rows;
 }
 
 function logAction(int $reminderId, string $action): void
