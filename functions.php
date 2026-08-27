@@ -85,6 +85,7 @@ function reminderTemplate(): string
     $template = setting('template', DEFAULT_TEMPLATE);
 
     $patterns = [
+        '/^[ \t]*Mohon hadir sesuai jadwal praktik[,.]?[ \t]*\r?\n?/mi',
         '/^[ \t]*Jika ada perubahan jam,\s*silahkan ketik\s*"Ubah \[Nama Poli\]: \[jam_baru\]"[ \t]*\r?\n?/mi',
         '/^[ \t]*Jika ada perubahan jam,\s*silakan ketik\s*"Ubah \[Nama Poli\]: \[jam_baru\]"[ \t]*\r?\n?/mi'
     ];
