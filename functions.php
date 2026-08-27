@@ -44,6 +44,21 @@ function indoDate(string $date): string
         date('Y', $timestamp);
 }
 
+function indoDay(string $date): string
+{
+    static $days = [
+        'Minggu',
+        'Senin',
+        'Selasa',
+        'Rabu',
+        'Kamis',
+        'Jumat',
+        'Sabtu'
+    ];
+
+    return $days[(int) date('w', strtotime($date))];
+}
+
 function normalizePhone(string $phone): string
 {
     $phone = preg_replace('/\D+/', '', $phone);
@@ -122,7 +137,7 @@ function schedulesFor(string $date): array
             mp.poli_nama AS lokasi,
             dj.dokter_kd AS kode_dokter,
             md.dokter_nama AS nama_dokter,
-            '' AS spesialis,
+            mp.poli_nama AS spesialis,
             mp.poli_nama AS nama_poli,
             md.dokter_kd AS doctor_id,
             IF(
@@ -319,6 +334,12 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
     }
 
     $formattedDate = indoDate($date);
+    $dayName = trim((string) ($doctor['hari'] ?? ''));
+
+    if ($dayName === '') {
+        $dayName = indoDay($date);
+    }
+
     $inden = indenCount(
         $date,
         (string) $doctor['doctor_id'],
@@ -326,15 +347,15 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
     );
 
     $variables = [
-        '{{nama_dokter}}' => $doctor['nama_dokter'],
+        '{{nama_dokter}}' => (string) ($doctor['nama_dokter'] ?? ''),
         '{{gelar}}' => '',
-        '{{spesialis}}' => $doctor['spesialis'],
+        '{{spesialis}}' => (string) ($doctor['spesialis'] ?? $items[0]['nama_poli'] ?? ''),
         '{{tanggal}}' => $formattedDate,
-        '{{hari}}' => $formattedDate,
-        '{{nama_poli}}' => $items[0]['nama_poli'],
-        '{{jam_mulai}}' => $items[0]['jam_mulai'],
-        '{{jam_selesai}}' => $items[0]['jam_selesai'],
-        '{{lokasi}}' => $items[0]['lokasi'],
+        '{{hari}}' => $dayName,
+        '{{nama_poli}}' => (string) ($items[0]['nama_poli'] ?? ''),
+        '{{jam_mulai}}' => (string) ($items[0]['jam_mulai'] ?? ''),
+        '{{jam_selesai}}' => (string) ($items[0]['jam_selesai'] ?? ''),
+        '{{lokasi}}' => (string) ($items[0]['lokasi'] ?? $items[0]['nama_poli'] ?? ''),
         '{{inden}}' => (string) $inden,
         '{{nama_rs}}' => setting(
             'nama_rs',
