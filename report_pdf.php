@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+ini_set('memory_limit', '256M');
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
@@ -50,7 +51,6 @@ try {
             tanggal,
             reminder_type,
             status,
-            opened_at,
             sent_at,
             created_at
         FROM reminders
@@ -73,37 +73,29 @@ try {
     $statement->execute($params);
     $rows = $statement->fetchAll();
 
-    function pdfDoctorName($doctorId): string
-    {
-        static $cache = [];
+    $doctorIds = [];
 
-        $key = (string) $doctorId;
+    foreach ($rows as $row) {
+        $doctorIds[(string) $row['doctor_id']] = true;
+    }
 
-        if (isset($cache[$key])) {
-            return $cache[$key];
+    $doctorNames = [];
+
+    if ($doctorIds) {
+        $ids = array_keys($doctorIds);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $doctorStatement = get_db('rsi_byl')->prepare("
+            SELECT
+                dokter_kd,
+                dokter_nama
+            FROM master_dokter
+            WHERE dokter_kd IN ($placeholders)
+        ");
+        $doctorStatement->execute($ids);
+
+        foreach ($doctorStatement->fetchAll() as $doctor) {
+            $doctorNames[(string) $doctor['dokter_kd']] = (string) $doctor['dokter_nama'];
         }
-
-        try {
-            $external = get_db('rsi_byl')->prepare("
-                SELECT dokter_nama
-                FROM master_dokter
-                WHERE dokter_kd = ?
-                LIMIT 1
-            ");
-
-            $external->execute([$key]);
-            $name = $external->fetchColumn();
-
-            if ($name) {
-                $cache[$key] = (string) $name;
-                return $cache[$key];
-            }
-        } catch (Throwable $e) {
-        }
-
-        $cache[$key] = $key;
-
-        return $cache[$key];
     }
 
     $total = count($rows);
@@ -114,13 +106,9 @@ try {
     foreach ($rows as $row) {
         if ($row['status'] === 'SENT') {
             $sent++;
-        }
-
-        if ($row['status'] === 'READY') {
+        } elseif ($row['status'] === 'READY') {
             $ready++;
-        }
-
-        if ($row['status'] === 'FAILED') {
+        } elseif ($row['status'] === 'FAILED') {
             $failed++;
         }
     }
@@ -145,7 +133,9 @@ try {
         'margin_right' => 10,
         'margin_top' => 14,
         'margin_bottom' => 14,
-        'tempDir' => $tempDir
+        'tempDir' => $tempDir,
+        'simpleTables' => true,
+        'packTableData' => true
     ]);
 
     $mpdf->SetTitle('Report Reminder WhatsApp');
@@ -175,10 +165,13 @@ try {
             color: #4b5563;
         }
 
-        .summary {
+        table {
             width: 100%;
-            margin: 10px 0 14px 0;
             border-collapse: collapse;
+        }
+
+        .summary {
+            margin: 10px 0 14px 0;
         }
 
         .summary td {
@@ -199,11 +192,6 @@ try {
             font-weight: bold;
         }
 
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
         .data-table th {
             background: #0d6e4f;
             color: #ffffff;
@@ -216,10 +204,6 @@ try {
             border: 1px solid #d1d5db;
             padding: 5px 6px;
             font-size: 8.5pt;
-        }
-
-        .data-table tr:nth-child(even) td {
-            background: #f9fafb;
         }
 
         .text-center {
@@ -239,22 +223,10 @@ try {
 
     <table class="summary">
         <tr>
-            <td>
-                <div class="label">TOTAL</div>
-                <div class="value">' . $total . '</div>
-            </td>
-            <td>
-                <div class="label">SENT</div>
-                <div class="value">' . $sent . '</div>
-            </td>
-            <td>
-                <div class="label">READY</div>
-                <div class="value">' . $ready . '</div>
-            </td>
-            <td>
-                <div class="label">FAILED</div>
-                <div class="value">' . $failed . '</div>
-            </td>
+            <td><div class="label">TOTAL</div><div class="value">' . $total . '</div></td>
+            <td><div class="label">SENT</div><div class="value">' . $sent . '</div></td>
+            <td><div class="label">READY</div><div class="value">' . $ready . '</div></td>
+            <td><div class="label">FAILED</div><div class="value">' . $failed . '</div></td>
         </tr>
     </table>
 
@@ -273,17 +245,14 @@ try {
         <tbody>';
 
     if (!$rows) {
-        $html .= '
-            <tr>
-                <td colspan="7" class="text-center">Tidak ada data.</td>
-            </tr>
-        ';
+        $html .= '<tr><td colspan="7" class="text-center">Tidak ada data.</td></tr>';
     } else {
         foreach ($rows as $index => $row) {
+            $doctorId = (string) $row['doctor_id'];
+            $doctorName = $doctorNames[$doctorId] ?? $doctorId;
             $createdAt = $row['created_at']
                 ? date('d-m-Y H:i:s', strtotime($row['created_at']))
                 : '-';
-
             $sentAt = $row['sent_at']
                 ? date('d-m-Y H:i:s', strtotime($row['sent_at']))
                 : '-';
@@ -292,13 +261,12 @@ try {
                 <tr>
                     <td class="text-center">' . ($index + 1) . '</td>
                     <td>' . e(date('d-m-Y', strtotime($row['tanggal']))) . '</td>
-                    <td>' . e(pdfDoctorName($row['doctor_id'])) . '</td>
+                    <td>' . e($doctorName) . '</td>
                     <td>' . e($row['reminder_type']) . '</td>
                     <td class="text-center">' . e($row['status']) . '</td>
                     <td>' . e($createdAt) . '</td>
                     <td>' . e($sentAt) . '</td>
-                </tr>
-            ';
+                </tr>';
         }
     }
 
@@ -307,6 +275,8 @@ try {
     </table>';
 
     $mpdf->WriteHTML($html);
+
+    unset($html, $rows, $doctorNames, $doctorIds);
 
     $fileName = 'report-reminder-' . $startDate . '-sampai-' . $endDate . '.pdf';
 
