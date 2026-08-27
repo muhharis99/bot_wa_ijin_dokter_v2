@@ -118,6 +118,7 @@ function schedulesFor(string $date): array
             djk.tanggal,
             dj.jam_mulai,
             dj.jam_selesai,
+            dj.poli_kd,
             mp.poli_nama AS lokasi,
             dj.dokter_kd AS kode_dokter,
             md.dokter_nama AS nama_dokter,
@@ -163,6 +164,149 @@ function schedulesFor(string $date): array
     return $cache[$date];
 }
 
+function indenTableSchema(): array
+{
+    static $schema = null;
+
+    if ($schema !== null) {
+        return $schema;
+    }
+
+    $schema = [];
+
+    try {
+        $columns = get_db('rsi_byl')->query('SHOW COLUMNS FROM inden_kunjung')->fetchAll();
+
+        foreach ($columns as $column) {
+            $field = strtolower((string) ($column['Field'] ?? ''));
+
+            if ($field !== '') {
+                $schema[$field] = strtolower((string) ($column['Type'] ?? ''));
+            }
+        }
+    } catch (Throwable $e) {
+        $schema = [];
+    }
+
+    return $schema;
+}
+
+function firstExistingColumn(array $schema, array $candidates): ?string
+{
+    foreach ($candidates as $candidate) {
+        if (array_key_exists($candidate, $schema)) {
+            return $candidate;
+        }
+    }
+
+    return null;
+}
+
+function indenCount(string $date, string $doctorCode, array $items): int
+{
+    static $cache = [];
+
+    $poliCodes = [];
+
+    foreach ($items as $item) {
+        $poliCode = trim((string) ($item['poli_kd'] ?? ''));
+
+        if ($poliCode !== '') {
+            $poliCodes[$poliCode] = $poliCode;
+        }
+    }
+
+    $poliCodes = array_values($poliCodes);
+    sort($poliCodes);
+
+    $cacheKey = $date . '|' . $doctorCode . '|' . implode(',', $poliCodes);
+
+    if (isset($cache[$cacheKey])) {
+        return $cache[$cacheKey];
+    }
+
+    $schema = indenTableSchema();
+
+    if (!$schema) {
+        return $cache[$cacheKey] = 0;
+    }
+
+    $dateColumn = firstExistingColumn($schema, [
+        'tanggal',
+        'tgl_kunjung',
+        'tgl_masuk',
+        'tgl_rs',
+        'tgl_daftar',
+        'jadwal_tanggal'
+    ]);
+
+    $doctorColumn = firstExistingColumn($schema, [
+        'kd_dr',
+        'dokter_kd',
+        'kd_dokter',
+        'doctor_id'
+    ]);
+
+    $poliColumn = firstExistingColumn($schema, [
+        'kd_poli',
+        'poli_kd',
+        'kode_poli',
+        'poli_id'
+    ]);
+
+    if ($dateColumn === null || $doctorColumn === null) {
+        return $cache[$cacheKey] = 0;
+    }
+
+    $where = [];
+    $params = [];
+    $dateType = $schema[$dateColumn] ?? '';
+
+    if (strpos($dateType, 'datetime') !== false || strpos($dateType, 'timestamp') !== false) {
+        $where[] = "`{$dateColumn}` >= ?";
+        $where[] = "`{$dateColumn}` < ?";
+        $params[] = $date . ' 00:00:00';
+        $params[] = date('Y-m-d', strtotime($date . ' +1 day')) . ' 00:00:00';
+    } else {
+        $where[] = "`{$dateColumn}` = ?";
+        $params[] = $date;
+    }
+
+    $where[] = "`{$doctorColumn}` = ?";
+    $params[] = $doctorCode;
+
+    if ($poliColumn !== null && $poliCodes) {
+        $placeholders = implode(',', array_fill(0, count($poliCodes), '?'));
+        $where[] = "`{$poliColumn}` IN ({$placeholders})";
+
+        foreach ($poliCodes as $poliCode) {
+            $params[] = $poliCode;
+        }
+    }
+
+    $deletedColumn = firstExistingColumn($schema, [
+        'deleted',
+        'is_deleted'
+    ]);
+
+    if ($deletedColumn !== null) {
+        $where[] = "(`{$deletedColumn}` IS NULL OR `{$deletedColumn}` = 0 OR `{$deletedColumn}` = '')";
+    }
+
+    try {
+        $statement = get_db('rsi_byl')->prepare(
+            'SELECT COUNT(*) FROM inden_kunjung WHERE ' . implode(' AND ', $where)
+        );
+
+        $statement->execute($params);
+        $cache[$cacheKey] = (int) $statement->fetchColumn();
+    } catch (Throwable $e) {
+        $cache[$cacheKey] = 0;
+    }
+
+    return $cache[$cacheKey];
+}
+
 function buildReminderMessage(array $doctor, array $items, string $date): string
 {
     $rows = '';
@@ -175,6 +319,11 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
     }
 
     $formattedDate = indoDate($date);
+    $inden = indenCount(
+        $date,
+        (string) $doctor['doctor_id'],
+        $items
+    );
 
     $variables = [
         '{{nama_dokter}}' => $doctor['nama_dokter'],
@@ -186,6 +335,7 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         '{{jam_mulai}}' => $items[0]['jam_mulai'],
         '{{jam_selesai}}' => $items[0]['jam_selesai'],
         '{{lokasi}}' => $items[0]['lokasi'],
+        '{{inden}}' => (string) $inden,
         '{{nama_rs}}' => setting(
             'nama_rs',
             'RS Sehat Sentosa'
