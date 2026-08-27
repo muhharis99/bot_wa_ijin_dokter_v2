@@ -98,6 +98,12 @@ function reminderTemplate(): string
 
 function schedulesFor(string $date): array
 {
+    static $cache = [];
+
+    if (isset($cache[$date])) {
+        return $cache[$date];
+    }
+
     $statement = get_db('rsi_byl')->prepare("
         SELECT
             djk.hari,
@@ -144,8 +150,9 @@ function schedulesFor(string $date): array
     ");
 
     $statement->execute([$date]);
+    $cache[$date] = $statement->fetchAll();
 
-    return $statement->fetchAll();
+    return $cache[$date];
 }
 
 function buildReminderMessage(array $doctor, array $items, string $date): string
