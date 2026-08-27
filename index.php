@@ -234,44 +234,19 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e(APP_NAME) ?></title>
 
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-
-    <link
-        href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
-        rel="stylesheet"
-    >
-
-    <link
-        href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
-        rel="stylesheet"
-    >
-
-    <link
-        href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
-        rel="stylesheet"
-    >
-
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="bg-body-tertiary">
     <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
         <div class="container py-2">
-            <a class="navbar-brand fw-bold text-success" href="index.php">
-                <?= e(APP_NAME) ?>
-            </a>
-
-            <button
-                class="navbar-toggler"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#mainNavbar"
-            >
+            <a class="navbar-brand fw-bold text-success" href="index.php"><?= e(APP_NAME) ?></a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
                 <span class="navbar-toggler-icon"></span>
             </button>
-
             <div class="collapse navbar-collapse" id="mainNavbar">
                 <div class="navbar-nav ms-auto">
                     <a class="nav-link active fw-semibold" href="index.php">Dashboard</a>
@@ -294,96 +269,38 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
             <div class="col-12 col-xl-8">
                 <form method="get" class="row g-2 justify-content-xl-end">
                     <div class="col-12 col-md-4 col-xl-3">
-                        <label class="form-label small text-secondary mb-1" for="doctorFilter">
-                            Dokter
-                        </label>
-                        <select
-                            class="form-select select2-filter"
-                            id="doctorFilter"
-                            name="dokter"
-                            data-placeholder="Semua Dokter"
-                        >
+                        <label class="form-label small text-secondary mb-1" for="doctorFilter">Dokter</label>
+                        <select class="form-select select2-filter" id="doctorFilter" name="dokter" data-placeholder="Semua Dokter">
                             <option value=""></option>
                             <?php foreach ($doctorOptions as $doctorOption): ?>
-                                <option
-                                    value="<?= e($doctorOption['dokter_kd']) ?>"
-                                    <?= $doctorFilter === $doctorOption['dokter_kd'] ? 'selected' : '' ?>
-                                >
-                                    <?= e($doctorOption['dokter_nama']) ?>
-                                </option>
+                                <option value="<?= e($doctorOption['dokter_kd']) ?>" <?= $doctorFilter === $doctorOption['dokter_kd'] ? 'selected' : '' ?>><?= e($doctorOption['dokter_nama']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
 
                     <div class="col-12 col-md-4 col-xl-3">
-                        <label class="form-label small text-secondary mb-1" for="poliFilter">
-                            Poli
-                        </label>
-                        <select
-                            class="form-select select2-filter"
-                            id="poliFilter"
-                            name="poli"
-                            data-placeholder="Semua Poli"
-                        >
+                        <label class="form-label small text-secondary mb-1" for="poliFilter">Poli</label>
+                        <select class="form-select select2-filter" id="poliFilter" name="poli" data-placeholder="Semua Poli">
                             <option value=""></option>
                             <?php foreach ($poliOptions as $poliOption): ?>
-                                <option
-                                    value="<?= e($poliOption['poli_nama']) ?>"
-                                    <?= $poliFilter === $poliOption['poli_nama'] ? 'selected' : '' ?>
-                                >
-                                    <?= e($poliOption['poli_nama']) ?>
-                                </option>
+                                <option value="<?= e($poliOption['poli_nama']) ?>" <?= $poliFilter === $poliOption['poli_nama'] ? 'selected' : '' ?>><?= e($poliOption['poli_nama']) ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
 
                     <div class="col-12 col-md-4 col-xl-3">
-                        <label class="form-label small text-secondary mb-1" for="scheduleDate">
-                            Jadwal
-                        </label>
+                        <label class="form-label small text-secondary mb-1" for="scheduleDate">Jadwal</label>
                         <div class="input-group">
-                            <input
-                                class="form-control"
-                                id="scheduleDate"
-                                type="text"
-                                name="jadwal"
-                                value="<?= e($displayDate) ?>"
-                                placeholder="DD-MM-YYYY"
-                                autocomplete="off"
-                            >
-                            <button
-                                class="btn btn-outline-secondary"
-                                id="scheduleDateButton"
-                                type="button"
-                                aria-label="Pilih tanggal"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                >
-                                    <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
+                            <input class="form-control" id="scheduleDate" type="text" name="jadwal" value="<?= e($displayDate) ?>" placeholder="DD-MM-YYYY" autocomplete="off">
+                            <button class="btn btn-outline-secondary" id="scheduleDateButton" type="button" aria-label="Pilih tanggal">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                             </button>
                         </div>
                     </div>
 
                     <div class="col-12 col-xl-auto d-flex gap-2 align-items-end">
-                        <button class="btn btn-success" type="submit">
-                            Tampilkan
-                        </button>
-                        <a class="btn btn-outline-secondary" href="index.php">
-                            Reset
-                        </a>
+                        <button class="btn btn-success" type="submit">Tampilkan</button>
+                        <a class="btn btn-outline-secondary" href="index.php">Reset</a>
                     </div>
                 </form>
             </div>
@@ -393,99 +310,37 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
             <div class="card-body d-flex flex-column flex-md-row align-items-md-center gap-3">
                 <span id="gatewayDot" class="gateway-dot"></span>
                 <div class="flex-grow-1">
-                    <div class="fw-semibold" id="gatewayStatus">
-                        Memeriksa WhatsApp Gateway...
-                    </div>
-                    <div class="text-secondary small">
-                        Gateway digunakan untuk mengirim pesan langsung tanpa membuka WhatsApp Web.
-                    </div>
+                    <div class="fw-semibold" id="gatewayStatus">Memeriksa WhatsApp Gateway...</div>
+                    <div class="text-secondary small">Gateway digunakan untuk mengirim pesan langsung tanpa membuka WhatsApp Web.</div>
                 </div>
-                <a
-                    id="gatewayLink"
-                    class="btn btn-outline-success btn-sm"
-                    href="#"
-                    target="_blank"
-                >
-                    Buka QR / Status
-                </a>
+                <a id="gatewayLink" class="btn btn-outline-success btn-sm" href="#" target="_blank">Buka QR / Status</a>
             </div>
         </div>
 
         <div class="row g-3 mb-4">
-            <div class="col-6 col-lg">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <div class="text-secondary small">DOKTER PRAKTIK</div>
-                        <div class="display-6 fw-bold"><?= $totalDoctors ?></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-6 col-lg">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <div class="text-secondary small">JADWAL PRAKTIK</div>
-                        <div class="display-6 fw-bold"><?= $totalSchedules ?></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-6 col-lg">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <div class="text-secondary small">SUDAH DIKIRIM</div>
-                        <div class="display-6 fw-bold text-success"><?= $counts['SENT'] ?></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-6 col-lg">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <div class="text-secondary small">BELUM DIKIRIM</div>
-                        <div class="display-6 fw-bold text-warning">
-                            <?= ($counts['READY'] ?? 0) + ($counts['OPENED'] ?? 0) ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-6 col-lg">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body">
-                        <div class="text-secondary small">GAGAL</div>
-                        <div class="display-6 fw-bold text-danger"><?= $counts['FAILED'] ?></div>
-                    </div>
-                </div>
-            </div>
+            <div class="col-6 col-lg"><div class="card shadow-sm border-0 h-100"><div class="card-body"><div class="text-secondary small">DOKTER PRAKTIK</div><div class="display-6 fw-bold"><?= $totalDoctors ?></div></div></div></div>
+            <div class="col-6 col-lg"><div class="card shadow-sm border-0 h-100"><div class="card-body"><div class="text-secondary small">JADWAL PRAKTIK</div><div class="display-6 fw-bold"><?= $totalSchedules ?></div></div></div></div>
+            <div class="col-6 col-lg"><div class="card shadow-sm border-0 h-100"><div class="card-body"><div class="text-secondary small">SUDAH DIKIRIM</div><div class="display-6 fw-bold text-success"><?= $counts['SENT'] ?></div></div></div></div>
+            <div class="col-6 col-lg"><div class="card shadow-sm border-0 h-100"><div class="card-body"><div class="text-secondary small">BELUM DIKIRIM</div><div class="display-6 fw-bold text-warning"><?= ($counts['READY'] ?? 0) + ($counts['OPENED'] ?? 0) ?></div></div></div></div>
+            <div class="col-6 col-lg"><div class="card shadow-sm border-0 h-100"><div class="card-body"><div class="text-secondary small">GAGAL</div><div class="display-6 fw-bold text-danger"><?= $counts['FAILED'] ?></div></div></div></div>
         </div>
 
         <?php if ($next): ?>
             <div class="alert alert-success-subtle border-success-subtle mb-4">
-                Jadwal berikutnya:
-                <strong><?= e($next['dokter_nama']) ?></strong>
-                · <?= e($next['poli_nama']) ?>
-                · <?= e(indoDate($next['tanggal'])) ?>
-                <?= e($next['jam_mulai']) ?>
+                Jadwal berikutnya: <strong><?= e($next['dokter_nama']) ?></strong> · <?= e($next['poli_nama']) ?> · <?= e(indoDate($next['tanggal'])) ?> <?= e($next['jam_mulai']) ?>
             </div>
         <?php endif; ?>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <h2 class="h5 mb-1">Jadwal Dokter</h2>
-                <p class="text-secondary small mb-0">
-                    <?= $totalDoctors ?> dokter · <?= $totalSchedules ?> sesi
-                </p>
+                <p class="text-secondary small mb-0"><?= $totalDoctors ?> dokter · <?= $totalSchedules ?> sesi</p>
             </div>
         </div>
 
         <div class="row g-3">
             <?php if (empty($byDoctor)): ?>
-                <div class="col-12">
-                    <div class="alert alert-light border text-center py-4">
-                        Tidak ada jadwal yang sesuai dengan filter.
-                    </div>
-                </div>
+                <div class="col-12"><div class="alert alert-light border text-center py-4">Tidak ada jadwal yang sesuai dengan filter.</div></div>
             <?php endif; ?>
 
             <?php foreach ($byDoctor as $group): ?>
@@ -517,13 +372,9 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                             <div class="d-flex justify-content-between gap-3 mb-3">
                                 <div>
                                     <h3 class="h5 mb-1"><?= e($doctor['nama_dokter']) ?></h3>
-                                    <div class="text-secondary small">
-                                        <?= e($phoneRaw ?: '-') ?>
-                                    </div>
+                                    <div class="text-secondary small"><?= e($phoneRaw ?: '-') ?></div>
                                 </div>
-                                <span class="badge <?= e($statusClass) ?> align-self-start">
-                                    <?= e($status) ?>
-                                </span>
+                                <span class="badge <?= e($statusClass) ?> align-self-start"><?= e($status) ?></span>
                             </div>
 
                             <div class="list-group list-group-flush mb-3">
@@ -531,18 +382,10 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                                     <div class="list-group-item px-0">
                                         <div class="d-flex justify-content-between gap-3">
                                             <div>
-                                                <div class="fw-semibold">
-                                                    <?= e($schedule['nama_poli']) ?>
-                                                </div>
-                                                <div class="text-secondary small">
-                                                    <?= e($schedule['lokasi']) ?>
-                                                </div>
+                                                <div class="fw-semibold"><?= e($schedule['nama_poli']) ?></div>
+                                                <div class="text-secondary small"><?= e($schedule['lokasi']) ?></div>
                                             </div>
-                                            <div class="fw-semibold text-nowrap">
-                                                <?= e($schedule['jam_mulai']) ?>
-                                                -
-                                                <?= e($schedule['jam_selesai']) ?>
-                                            </div>
+                                            <div class="fw-semibold text-nowrap"><?= e($schedule['jam_mulai']) ?> - <?= e($schedule['jam_selesai']) ?></div>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
@@ -550,29 +393,11 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
 
                             <?php if ($reminder): ?>
                                 <div class="d-flex flex-wrap gap-2 mt-auto">
-                                    <a
-                                        class="btn btn-outline-secondary btn-sm"
-                                        target="_blank"
-                                        href="preview.php?id=<?= (int) $reminder['id'] ?>"
-                                    >
-                                        Preview
-                                    </a>
-
+                                    <a class="btn btn-outline-secondary btn-sm" target="_blank" href="preview.php?id=<?= (int) $reminder['id'] ?>">Preview</a>
                                     <?php if ($phone !== '' && $message !== ''): ?>
-                                        <button
-                                            type="button"
-                                            class="btn btn-success btn-sm js-whatsapp"
-                                            data-phone="<?= e($phone) ?>"
-                                            data-message="<?= e($message) ?>"
-                                            data-reminder-id="<?= (int) $reminder['id'] ?>"
-                                            data-doctor-name="<?= e($doctor['nama_dokter']) ?>"
-                                        >
-                                            <?= $status === 'SENT' ? 'Kirim Ulang WhatsApp' : 'Kirim WhatsApp' ?>
-                                        </button>
+                                        <button type="button" class="btn btn-success btn-sm js-whatsapp" data-phone="<?= e($phone) ?>" data-message="<?= e($message) ?>" data-reminder-id="<?= (int) $reminder['id'] ?>" data-doctor-name="<?= e($doctor['nama_dokter']) ?>"><?= $status === 'SENT' ? 'Kirim Ulang WhatsApp' : 'Kirim WhatsApp' ?></button>
                                     <?php else: ?>
-                                        <span class="text-danger small align-self-center">
-                                            Nomor WhatsApp tidak tersedia
-                                        </span>
+                                        <span class="text-danger small align-self-center">Nomor WhatsApp tidak tersedia</span>
                                     <?php endif; ?>
                                 </div>
                             <?php endif; ?>
@@ -596,9 +421,7 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
     <script src="assets/back-to-top.js"></script>
 
     <script>
-        const gatewayBaseUrl =
-            'http://' + window.location.hostname + ':3000';
-
+        const gatewayBaseUrl = 'http://' + window.location.hostname + ':3210';
         const gatewayLink = document.getElementById('gatewayLink');
         const gatewayStatus = document.getElementById('gatewayStatus');
         const gatewayDot = document.getElementById('gatewayDot');
@@ -621,13 +444,7 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
 
         async function refreshGatewayStatus() {
             try {
-                const response = await fetch(
-                    gatewayBaseUrl + '/status',
-                    {
-                        cache: 'no-store'
-                    }
-                );
-
+                const response = await fetch(gatewayBaseUrl + '/status', { cache: 'no-store' });
                 const data = await response.json();
 
                 if (data.ready) {
@@ -642,15 +459,10 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                     return;
                 }
 
-                gatewayStatus.textContent =
-                    'WhatsApp Gateway: ' +
-                    (data.state || 'belum siap');
-
+                gatewayStatus.textContent = 'WhatsApp Gateway: ' + (data.state || 'belum siap');
                 gatewayDot.className = 'gateway-dot';
             } catch (error) {
-                gatewayStatus.textContent =
-                    'WhatsApp Gateway tidak aktif. Jalankan: node server.js';
-
+                gatewayStatus.textContent = 'WhatsApp Gateway tidak aktif. Jalankan: npm start';
                 gatewayDot.className = 'gateway-dot error';
             }
         }
@@ -697,12 +509,7 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                     const confirmation = await Swal.fire({
                         icon: 'question',
                         title: 'Kirim WhatsApp?',
-                        html:
-                            'Apakah reminder benar akan dikirim ke <strong>' +
-                            doctorName +
-                            '</strong><br>Nomor: <strong>' +
-                            phone +
-                            '</strong>?',
+                        html: 'Apakah reminder benar akan dikirim ke <strong>' + doctorName + '</strong><br>Nomor: <strong>' + phone + '</strong>?',
                         showCancelButton: true,
                         confirmButtonText: 'Ya, Kirim',
                         cancelButtonText: 'Tidak',
@@ -730,27 +537,18 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                     });
 
                     try {
-                        const response = await fetch(
-                            gatewayBaseUrl + '/send',
-                            {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    phone,
-                                    message
-                                })
-                            }
-                        );
+                        const response = await fetch(gatewayBaseUrl + '/send', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ phone, message })
+                        });
 
                         const result = await response.json();
 
                         if (!response.ok || !result.success) {
-                            throw new Error(
-                                result.message ||
-                                'Gagal mengirim WhatsApp.'
-                            );
+                            throw new Error(result.message || 'Gagal mengirim WhatsApp.');
                         }
 
                         await Swal.fire({
@@ -761,25 +559,17 @@ $encodedFilterQuery = htmlspecialchars($filterQuery, ENT_QUOTES, 'UTF-8');
                             confirmButtonColor: '#198754'
                         });
 
-                        window.location.href =
-                            'index.php?<?= $encodedFilterQuery ?>' +
-                            '&action=sent&id=' +
-                            encodeURIComponent(reminderId);
+                        window.location.href = 'index.php?<?= $encodedFilterQuery ?>' + '&action=sent&id=' + encodeURIComponent(reminderId);
                     } catch (error) {
                         await Swal.fire({
                             icon: 'error',
                             title: 'Gagal Mengirim',
-                            text:
-                                error.message ||
-                                'Gagal menghubungi WhatsApp Gateway.',
+                            text: error.message || 'Gagal menghubungi WhatsApp Gateway.',
                             confirmButtonText: 'OK',
                             confirmButtonColor: '#dc3545'
                         });
 
-                        window.location.href =
-                            'index.php?<?= $encodedFilterQuery ?>' +
-                            '&action=failed&id=' +
-                            encodeURIComponent(reminderId);
+                        window.location.href = 'index.php?<?= $encodedFilterQuery ?>' + '&action=failed&id=' + encodeURIComponent(reminderId);
                     } finally {
                         this.disabled = false;
                         this.textContent = originalText;
