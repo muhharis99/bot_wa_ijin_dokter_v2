@@ -74,6 +74,21 @@ function setting(string $key, string $fallback = ''): string
     return $value !== '' ? $value : $fallback;
 }
 
+function sanitizeReminderMessage(string $message): string
+{
+    $patterns = [
+        '/^[ \t]*Mohon hadir sesuai jadwal praktik[,.]?[ \t]*\r?\n?/mi',
+        '/^[ \t]*Jika ada perubahan jam,\s*silahkan ketik\s*["“”]?Ubah\s*\[Nama Poli\]\s*:\s*\[jam_baru\]["“”]?[,.]?[ \t]*\r?\n?/mi',
+        '/^[ \t]*Jika ada perubahan jam,\s*silakan ketik\s*["“”]?Ubah\s*\[Nama Poli\]\s*:\s*\[jam_baru\]["“”]?[,.]?[ \t]*\r?\n?/mi'
+    ];
+
+    $message = preg_replace($patterns, '', $message);
+    $message = preg_replace("/\r\n|\r/", "\n", $message);
+    $message = preg_replace("/\n{3,}/", "\n\n", $message);
+
+    return trim($message);
+}
+
 function reminderTemplate(): string
 {
     static $template = null;
@@ -82,17 +97,9 @@ function reminderTemplate(): string
         return $template;
     }
 
-    $template = setting('template', DEFAULT_TEMPLATE);
-
-    $patterns = [
-        '/^[ \t]*Mohon hadir sesuai jadwal praktik[,.]?[ \t]*\r?\n?/mi',
-        '/^[ \t]*Jika ada perubahan jam,\s*silahkan ketik\s*"Ubah \[Nama Poli\]: \[jam_baru\]"[ \t]*\r?\n?/mi',
-        '/^[ \t]*Jika ada perubahan jam,\s*silakan ketik\s*"Ubah \[Nama Poli\]: \[jam_baru\]"[ \t]*\r?\n?/mi'
-    ];
-
-    $template = preg_replace($patterns, '', $template);
-    $template = preg_replace("/\n{3,}/", "\n\n", $template);
-    $template = trim($template);
+    $template = sanitizeReminderMessage(
+        setting('template', DEFAULT_TEMPLATE)
+    );
 
     return $template;
 }
@@ -194,7 +201,7 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         $message .= "\n\nJadwal lainnya hari ini:" . $rows;
     }
 
-    return $message;
+    return sanitizeReminderMessage($message);
 }
 
 function createReminder(array $doctor, array $items, string $date): int
@@ -224,10 +231,7 @@ function createReminder(array $doctor, array $items, string $date): int
     $existingReminder = $existsStatement->fetch();
 
     if ($existingReminder) {
-        if (
-            $existingReminder['status'] !== 'SENT' &&
-            $existingReminder['message'] !== $message
-        ) {
+        if ($existingReminder['message'] !== $message) {
             $updateStatement = $pdo->prepare("
                 UPDATE reminders
                 SET message = ?
