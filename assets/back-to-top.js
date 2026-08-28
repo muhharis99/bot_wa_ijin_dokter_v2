@@ -7,18 +7,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const navbarMenu = document.querySelector('#mainNavbar .navbar-nav');
 
-    if (navbarMenu && !navbarMenu.querySelector('a[href="dokter_ijin.php"]')) {
-        const reportLink = navbarMenu.querySelector('a[href="report.php"]');
-        const leaveLink = document.createElement('a');
+    if (navbarMenu) {
+        let leaveLink = navbarMenu.querySelector('a[href="dokter_ijin.php"]');
 
-        leaveLink.className = 'nav-link';
-        leaveLink.href = 'dokter_ijin.php';
-        leaveLink.textContent = 'Dokter Ijin';
+        if (!leaveLink) {
+            const reportLink = navbarMenu.querySelector('a[href="report.php"]');
+            leaveLink = document.createElement('a');
 
-        if (reportLink && reportLink.nextSibling) {
-            navbarMenu.insertBefore(leaveLink, reportLink.nextSibling);
-        } else {
-            navbarMenu.appendChild(leaveLink);
+            leaveLink.className = 'nav-link';
+            leaveLink.href = 'dokter_ijin.php';
+            leaveLink.textContent = 'Dokter Ijin';
+
+            if (reportLink && reportLink.nextSibling) {
+                navbarMenu.insertBefore(leaveLink, reportLink.nextSibling);
+            } else {
+                navbarMenu.appendChild(leaveLink);
+            }
+        }
+
+        if (!navbarMenu.querySelector('a[href="pindah_jam_praktek.php"]')) {
+            const movedPracticeLink = document.createElement('a');
+
+            movedPracticeLink.className = 'nav-link';
+            movedPracticeLink.href = 'pindah_jam_praktek.php';
+            movedPracticeLink.textContent = 'Pindah Jam Praktek';
+
+            if (leaveLink && leaveLink.nextSibling) {
+                navbarMenu.insertBefore(movedPracticeLink, leaveLink.nextSibling);
+            } else {
+                navbarMenu.appendChild(movedPracticeLink);
+            }
         }
     }
 
