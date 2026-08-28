@@ -53,14 +53,29 @@ document.addEventListener('DOMContentLoaded', function () {
         if (practiceDate !== '') {
             document.querySelectorAll('h3.h5.mb-1').forEach(function (doctorName) {
                 const identity = doctorName.parentElement;
+                const card = doctorName.closest('.card');
 
-                if (!identity || identity.querySelector('.doctor-practice-date')) {
+                if (!identity || !card || identity.querySelector('.doctor-practice-date')) {
                     return;
                 }
 
                 const practiceInfo = document.createElement('div');
                 practiceInfo.className = 'doctor-practice-date small mt-1';
                 practiceInfo.innerHTML = '<span class="text-secondary">Praktek:</span> <span class="fw-semibold">' + practiceDate + '</span>';
+
+                const timeValues = Array.from(
+                    card.querySelectorAll('.list-group-item .fw-semibold.text-nowrap')
+                )
+                    .map(function (element) {
+                        return element.textContent.trim().replace(/\s+/g, ' ');
+                    })
+                    .filter(function (value, index, values) {
+                        return value !== '' && values.indexOf(value) === index;
+                    });
+
+                if (timeValues.length > 0) {
+                    practiceInfo.innerHTML += '<br><span class="text-secondary">Jam:</span> <span class="fw-semibold">' + timeValues.join(', ') + '</span>';
+                }
 
                 identity.appendChild(practiceInfo);
             });
