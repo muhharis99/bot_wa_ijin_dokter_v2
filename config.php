@@ -19,6 +19,12 @@ $databases = [
         'pass' => '4dm1n3dp',
         'name' => 'rsi_byl'
     ],
+    'rme' => [
+        'host' => '192.168.0.33',
+        'user' => 'admin',
+        'pass' => 'admin3dp',
+        'name' => 'rme'
+    ],
 ];
 
 const APP_NAME = 'DokterReminder';
