@@ -202,13 +202,35 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    if (!document.querySelector('footer')) {
-        const footer = document.createElement('footer');
+    let footer = document.querySelector('footer');
 
-        footer.textContent = 'DokterReminder · PHP Native + MySQL + whatsapp-web.js';
-
+    if (!footer) {
+        footer = document.createElement('footer');
         document.body.appendChild(footer);
     }
+
+    footer.className = 'app-footer';
+    footer.textContent = 'Dokter Reminder RSU Islam Klaten © ' + new Date().getFullYear();
+    footer.style.setProperty('width', '100%', 'important');
+    footer.style.setProperty('max-width', 'none', 'important');
+    footer.style.setProperty('margin', '0', 'important');
+    footer.style.setProperty('padding', '11px 16px', 'important');
+    footer.style.setProperty('min-height', '46px', 'important');
+    footer.style.setProperty('display', 'flex', 'important');
+    footer.style.setProperty('align-items', 'center', 'important');
+    footer.style.setProperty('justify-content', 'center', 'important');
+    footer.style.setProperty('background', '#389f6a', 'important');
+    footer.style.setProperty('background-color', '#389f6a', 'important');
+    footer.style.setProperty('color', '#ffffff', 'important');
+    footer.style.setProperty('border', '0', 'important');
+    footer.style.setProperty('border-radius', '0', 'important');
+    footer.style.setProperty('box-shadow', 'none', 'important');
+    footer.style.setProperty('font-size', '13px', 'important');
+    footer.style.setProperty('font-weight', '400', 'important');
+    footer.style.setProperty('line-height', '24px', 'important');
+    footer.style.setProperty('text-align', 'center', 'important');
+    footer.style.setProperty('transform', 'none', 'important');
+    footer.style.setProperty('transition', 'none', 'important');
 
     updateVisibility();
 });
