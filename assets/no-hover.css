@@ -1,0 +1,48 @@
+.xbox,
+.card,
+.card-modern,
+.thumbnail,
+.btn,
+.navbar .nav-link,
+.list-group-item,
+.table tbody tr,
+.select2-container,
+.form-control,
+.form-select {
+    transition: none !important;
+}
+
+.xbox::after,
+.card::after,
+.card-modern::after {
+    display: none !important;
+    content: none !important;
+    box-shadow: none !important;
+    opacity: 0 !important;
+}
+
+.xbox:hover,
+.card:hover,
+.card-modern:hover,
+.thumbnail:hover,
+.row.g-3 > [class*="col-"] > .card:hover,
+.row.g-4 > [class*="col-"] > .card:hover {
+    z-index: auto !important;
+    transform: none !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+.card:hover::after,
+.card-modern:hover::after,
+.xbox:hover::after {
+    display: none !important;
+    opacity: 0 !important;
+}
+
+.table-hover > tbody > tr:hover > * {
+    --bs-table-bg-state: transparent !important;
+}
+
+.btn:hover {
+    transform: none !important;
+}
