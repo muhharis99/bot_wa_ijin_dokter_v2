@@ -1,3 +1,8 @@
+const navbarFixLink = document.createElement('link');
+navbarFixLink.rel = 'stylesheet';
+navbarFixLink.href = 'assets/navbar-fix.css';
+document.head.appendChild(navbarFixLink);
+
 document.addEventListener('DOMContentLoaded', function () {
     const navbarBrand = document.querySelector('.navbar-brand');
 
