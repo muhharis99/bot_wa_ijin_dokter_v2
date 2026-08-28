@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', function () {
+    const navbarBrand = document.querySelector('.navbar-brand');
+
+    if (navbarBrand) {
+        navbarBrand.textContent = 'Dokter Reminder RSU Islam Klaten';
+    }
+
     const button = document.createElement('button');
 
     button.type = 'button';
