@@ -1,0 +1,37 @@
+footer {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 42px !important;
+    margin: 0 !important;
+    padding: 10px 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #389f6a !important;
+    color: #ffffff !important;
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    line-height: 22px !important;
+    text-align: center !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+footer,
+footer:hover,
+footer:focus,
+footer:active {
+    background: #389f6a !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+footer * {
+    margin: 0 !important;
+    color: #ffffff !important;
+    font-size: inherit !important;
+    line-height: inherit !important;
+}
