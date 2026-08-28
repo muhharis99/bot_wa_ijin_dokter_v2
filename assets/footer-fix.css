@@ -1,37 +1,83 @@
-footer {
-    width: 100% !important;
-    max-width: none !important;
-    min-height: 42px !important;
-    margin: 0 !important;
-    padding: 10px 16px !important;
+html,
+body {
+    min-height: 100%;
+}
+
+body {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100vh !important;
+}
+
+main,
+main.container,
+.page-wrapper,
+.content-wrapper {
+    flex: 1 0 auto;
+}
+
+footer,
+.app-footer,
+.site-footer {
+    position: relative !important;
+    left: 50% !important;
+    right: auto !important;
+    flex: 0 0 auto !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
+    width: 100vw !important;
+    max-width: none !important;
+    min-height: 44px !important;
+    margin: 0 0 0 -50vw !important;
+    padding: 10px 16px !important;
     border: 0 !important;
     border-radius: 0 !important;
     background: #389f6a !important;
     color: #ffffff !important;
     font-size: 13px !important;
     font-weight: 400 !important;
-    line-height: 22px !important;
+    line-height: 24px !important;
     text-align: center !important;
     box-shadow: none !important;
     transform: none !important;
+    transition: none !important;
+    z-index: 1 !important;
 }
 
-footer,
 footer:hover,
 footer:focus,
-footer:active {
+footer:active,
+.app-footer:hover,
+.app-footer:focus,
+.app-footer:active,
+.site-footer:hover,
+.site-footer:focus,
+.site-footer:active {
     background: #389f6a !important;
     color: #ffffff !important;
     box-shadow: none !important;
     transform: none !important;
 }
 
-footer * {
+footer *,
+.app-footer *,
+.site-footer * {
     margin: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
     color: #ffffff !important;
     font-size: inherit !important;
     line-height: inherit !important;
+}
+
+@media (max-width: 767.98px) {
+    footer,
+    .app-footer,
+    .site-footer {
+        min-height: 42px !important;
+        padding: 9px 12px !important;
+        font-size: 12px !important;
+        line-height: 22px !important;
+    }
 }
