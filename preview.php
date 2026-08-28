@@ -142,6 +142,7 @@ if ($isLeave) {
     >
 
     <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="assets/custom-theme.css">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark">
