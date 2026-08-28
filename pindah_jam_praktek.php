@@ -32,10 +32,10 @@ try {
             praktek.cjam1,
             praktek.cjam2,
             praktek.ctanggal
-        FROM praktek
-        INNER JOIN dokter_spesialis
+        FROM pendaftaran.praktek AS praktek
+        INNER JOIN pendaftaran.dokter_spesialis AS dokter_spesialis
             ON praktek.dokter_spesialis_id = dokter_spesialis.id
-        INNER JOIN rsiklaten.dokter
+        INNER JOIN rsiklaten.dokter AS dokter
             ON dokter_spesialis.dokter_id = dokter.no_dr
         WHERE praktek.ctanggal LIKE ?
         ORDER BY dokter.nama2 ASC, praktek.jam1 ASC
