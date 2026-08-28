@@ -38,7 +38,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!leaveLink) {
             const reportLink = navbarMenu.querySelector('a[href="report.php"]');
             leaveLink = document.createElement('a');
-
             leaveLink.className = 'nav-link';
             leaveLink.href = 'dokter_ijin.php';
             leaveLink.textContent = 'Dokter Ijin';
@@ -52,7 +51,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!navbarMenu.querySelector('a[href="pindah_jam_praktek.php"]')) {
             const movedPracticeLink = document.createElement('a');
-
             movedPracticeLink.className = 'nav-link';
             movedPracticeLink.href = 'pindah_jam_praktek.php';
             movedPracticeLink.textContent = 'Pindah Jam Praktek';
@@ -66,7 +64,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const button = document.createElement('button');
-
     button.type = 'button';
     button.id = 'backToTop';
     button.setAttribute('aria-label', 'Kembali ke atas');
@@ -202,7 +199,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    let footer = document.querySelector('footer');
+    const footers = Array.from(document.querySelectorAll('footer'));
+    let footer = footers.shift();
+
+    footers.forEach(function (duplicateFooter) {
+        duplicateFooter.remove();
+    });
 
     if (!footer) {
         footer = document.createElement('footer');
@@ -210,7 +212,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     footer.className = 'app-footer';
-    footer.textContent = 'Dokter Reminder RSU Islam Klaten © ' + new Date().getFullYear();
+    footer.replaceChildren(
+        document.createTextNode(
+            'Dokter Reminder RSU Islam Klaten © ' + new Date().getFullYear()
+        )
+    );
+
     footer.style.setProperty('width', '100%', 'important');
     footer.style.setProperty('max-width', 'none', 'important');
     footer.style.setProperty('margin', '0', 'important');
