@@ -21,53 +21,47 @@ $date = $dateObject->format('Y-m-d');
 $displayDate = $dateObject->format('d-m-Y');
 $rows = [];
 $error = '';
+$doctorNames = [];
 
 try {
     $leaveStatement = get_db('rme')->prepare("
         SELECT
-            id,
-            nomor,
-            jenis,
-            dokter_id,
-            dokter_spesialis_id,
-            kopilot,
-            dpjp,
-            praktek,
-            max_praktek,
-            praktek1,
-            praktek2,
-            visit,
-            max_visit,
-            visit1,
-            visit2,
-            konsul,
-            masuk,
-            cetak,
-            tanggal,
-            printed,
-            registered,
-            writer,
-            writed
-        FROM surat_ijin
-        WHERE tanggal = ?
-            AND deleted IS NULL
-        ORDER BY dokter_id ASC, id DESC
+            a.id,
+            a.nomor,
+            a.jenis,
+            a.dokter_id,
+            a.dokter_spesialis_id,
+            a.kopilot,
+            a.dpjp,
+            a.praktek,
+            a.visit,
+            a.konsul,
+            a.cetak,
+            a.registered
+        FROM (
+            SELECT *
+            FROM surat_ijin
+            ORDER BY id DESC
+        ) a
+        WHERE a.praktek LIKE ?
+            AND a.deleted IS NULL
+        ORDER BY a.id DESC
     ");
 
-    $leaveStatement->execute([$date]);
+    $leaveStatement->execute(['%' . $date . '%']);
     $rows = $leaveStatement->fetchAll();
 
     $doctorIds = [];
 
     foreach ($rows as $row) {
-        $doctorId = trim((string) ($row['dokter_id'] ?? ''));
+        foreach (['dokter_id', 'kopilot', 'dpjp'] as $field) {
+            $doctorId = trim((string) ($row[$field] ?? ''));
 
-        if ($doctorId !== '') {
-            $doctorIds[$doctorId] = $doctorId;
+            if ($doctorId !== '' && $doctorId !== '0') {
+                $doctorIds[$doctorId] = $doctorId;
+            }
         }
     }
-
-    $doctorNames = [];
 
     if ($doctorIds) {
         $doctorIds = array_values($doctorIds);
@@ -125,11 +119,11 @@ try {
             <div>
                 <span class="badge text-bg-warning-subtle text-warning-emphasis mb-2">IJIN DOKTER</span>
                 <h1 class="h3 mb-1">Dokter Ijin</h1>
-                <p class="text-secondary mb-0">Daftar dokter yang memiliki surat ijin pada tanggal yang dipilih.</p>
+                <p class="text-secondary mb-0">Daftar dokter yang memiliki ijin praktek pada tanggal yang dipilih.</p>
             </div>
 
             <form method="get" id="leaveFilterForm">
-                <label class="form-label small text-secondary mb-1" for="leaveDate">Tanggal</label>
+                <label class="form-label small text-secondary mb-1" for="leaveDate">Tanggal Praktek</label>
                 <div class="input-group">
                     <input
                         type="text"
@@ -148,27 +142,19 @@ try {
         </div>
 
         <div class="row g-3 mb-3">
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body py-3">
-                        <div class="text-secondary small">TANGGAL</div>
+                        <div class="text-secondary small">TANGGAL PRAKTEK</div>
                         <div class="h5 fw-bold mb-0"><?= e(indoDate($date)) ?></div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-body py-3">
-                        <div class="text-secondary small">TOTAL DOKTER IJIN</div>
+                        <div class="text-secondary small">TOTAL DATA IJIN</div>
                         <div class="h3 fw-bold mb-0"><?= count($rows) ?></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body py-3">
-                        <div class="text-secondary small">SUMBER</div>
-                        <div class="fw-semibold">rme.surat_ijin</div>
                     </div>
                 </div>
             </div>
@@ -189,28 +175,48 @@ try {
                                 <th>No</th>
                                 <th>Kode Dokter</th>
                                 <th>Nama Dokter</th>
-                                <th>Jenis</th>
-                                <th>Nomor Surat</th>
-                                <th>Tanggal</th>
-                                <th>Registered</th>
+                                <th>Kopilot</th>
+                                <th>DPJP</th>
+                                <th>Konsul</th>
+                                <th>Praktek</th>
+                                <th>Visit</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($rows as $index => $row): ?>
                                 <?php
-                                $doctorId = (string) ($row['dokter_id'] ?? '');
+                                $doctorId = trim((string) ($row['dokter_id'] ?? ''));
+                                $copilotId = trim((string) ($row['kopilot'] ?? ''));
+                                $dpjpId = trim((string) ($row['dpjp'] ?? ''));
                                 $doctorName = $doctorNames[$doctorId] ?? $doctorId;
+                                $copilotName = $copilotId !== '' && $copilotId !== '0'
+                                    ? ($doctorNames[$copilotId] ?? $copilotId)
+                                    : '-';
+                                $dpjpName = $dpjpId !== '' && $dpjpId !== '0'
+                                    ? ($doctorNames[$dpjpId] ?? $dpjpId)
+                                    : '-';
+                                $consultation = match ((string) ($row['konsul'] ?? '')) {
+                                    '1' => 'Ya',
+                                    '2' => 'Tidak',
+                                    default => '-'
+                                };
+                                $approved = !empty($row['cetak']);
                                 ?>
                                 <tr>
                                     <td><?= $index + 1 ?></td>
                                     <td><?= e($doctorId) ?></td>
                                     <td><?= e($doctorName) ?></td>
-                                    <td><?= e((string) ($row['jenis'] ?? '-')) ?></td>
-                                    <td><?= e((string) ($row['nomor'] ?? '-')) ?></td>
-                                    <td data-order="<?= e((string) ($row['tanggal'] ?? '')) ?>">
-                                        <?= e(!empty($row['tanggal']) ? date('d-m-Y', strtotime((string) $row['tanggal'])) : '-') ?>
+                                    <td><?= e($copilotName) ?></td>
+                                    <td><?= e($dpjpName) ?></td>
+                                    <td><?= e($consultation) ?></td>
+                                    <td><?= nl2br(e(str_replace(',', "\n", (string) ($row['praktek'] ?? '-')))) ?></td>
+                                    <td><?= nl2br(e(str_replace(',', "\n", (string) ($row['visit'] ?? '-')))) ?></td>
+                                    <td>
+                                        <span class="badge <?= $approved ? 'text-bg-success' : 'text-bg-warning' ?>">
+                                            <?= $approved ? 'DISETUJUI' : 'PENDING' ?>
+                                        </span>
                                     </td>
-                                    <td><?= e(!empty($row['registered']) ? date('d-m-Y H:i:s', strtotime((string) $row['registered'])) : '-') ?></td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -259,7 +265,7 @@ try {
             new DataTable('#leaveTable', {
                 responsive: true,
                 pageLength: 25,
-                order: [[5, 'desc']],
+                order: [[0, 'asc']],
                 language: {
                     search: 'Cari:',
                     lengthMenu: 'Tampilkan _MENU_ data',
