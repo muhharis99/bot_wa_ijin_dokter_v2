@@ -196,10 +196,10 @@ function movedPracticeSchedules(string $date): array
                 praktek.ctanggal,
                 dokter_spesialis.dokter_id,
                 dokter.nama2 AS nama
-            FROM praktek
-            INNER JOIN dokter_spesialis
+            FROM pendaftaran.praktek AS praktek
+            INNER JOIN pendaftaran.dokter_spesialis AS dokter_spesialis
                 ON praktek.dokter_spesialis_id = dokter_spesialis.id
-            INNER JOIN rsiklaten.dokter
+            INNER JOIN rsiklaten.dokter AS dokter
                 ON dokter_spesialis.dokter_id = dokter.no_dr
             WHERE praktek.ctanggal LIKE ?
         ");
@@ -226,7 +226,7 @@ function movedPracticeSchedules(string $date): array
         }
     } catch (Throwable $e) {
         error_log(
-            'Gagal membaca pindah jam praktek untuk tanggal ' . $date . ': ' . $e->getMessage()
+            'Gagal membaca pendaftaran.praktek untuk tanggal ' . $date . ': ' . $e->getMessage()
         );
     }
 
