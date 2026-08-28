@@ -13,6 +13,11 @@ footerFixLink.rel = 'stylesheet';
 footerFixLink.href = 'assets/footer-fix.css';
 document.head.appendChild(footerFixLink);
 
+const modalFixLink = document.createElement('link');
+modalFixLink.rel = 'stylesheet';
+modalFixLink.href = 'assets/modal-fix.css';
+document.head.appendChild(modalFixLink);
+
 const noHoverLink = document.createElement('link');
 noHoverLink.rel = 'stylesheet';
 noHoverLink.href = 'assets/no-hover.css';
