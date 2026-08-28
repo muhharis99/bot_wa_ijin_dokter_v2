@@ -138,6 +138,11 @@ if ($isLeave) {
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="assets/navbar-fix.css">
+    <link rel="stylesheet" href="assets/rsi-reference.css">
+    <link rel="stylesheet" href="assets/footer-fix.css">
+    <link rel="stylesheet" href="assets/modal-fix.css">
+    <link rel="stylesheet" href="assets/no-hover.css">
 </head>
 <body class="bg-body-tertiary">
     <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
@@ -161,7 +166,7 @@ if ($isLeave) {
         </div>
     </nav>
 
-    <main class="container py-4 page-narrow">
+    <main class="container py-4">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
             <div>
                 <span class="badge text-bg-success-subtle text-success mb-2">
