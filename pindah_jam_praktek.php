@@ -24,34 +24,17 @@ $error = '';
 
 try {
     $movedSchedules = movedPracticeSchedules($date);
-    $doctorIds = array_keys($movedSchedules);
-    $doctorNames = [];
-
-    if ($doctorIds) {
-        $placeholders = implode(',', array_fill(0, count($doctorIds), '?'));
-        $doctorStatement = get_db('rsi_byl')->prepare("
-            SELECT
-                dokter_kd,
-                dokter_nama
-            FROM master_dokter
-            WHERE dokter_kd IN ({$placeholders})
-        ");
-        $doctorStatement->execute($doctorIds);
-
-        foreach ($doctorStatement->fetchAll() as $doctorRow) {
-            $doctorNames[(string) $doctorRow['dokter_kd']] = (string) $doctorRow['dokter_nama'];
-        }
-    }
 
     foreach ($movedSchedules as $doctorId => $schedules) {
         foreach ($schedules as $schedule) {
             $rows[] = [
                 'dokter_id' => $doctorId,
-                'nama_dokter' => $doctorNames[$doctorId] ?? $doctorId,
+                'nama_dokter' => (string) ($schedule['nama'] ?? $doctorId),
                 'jam1' => (string) ($schedule['jam1'] ?? ''),
                 'jam2' => (string) ($schedule['jam2'] ?? ''),
                 'cjam1' => (string) ($schedule['cjam1'] ?? ''),
-                'cjam2' => (string) ($schedule['cjam2'] ?? '')
+                'cjam2' => (string) ($schedule['cjam2'] ?? ''),
+                'tanggal' => (string) ($schedule['tanggal'] ?? $date)
             ];
         }
     }
@@ -176,7 +159,9 @@ try {
                                     <td><?= $index + 1 ?></td>
                                     <td><?= e($row['dokter_id']) ?></td>
                                     <td><?= e($row['nama_dokter']) ?></td>
-                                    <td data-order="<?= e($date) ?>"><?= e($displayDate) ?></td>
+                                    <td data-order="<?= e($row['tanggal']) ?>">
+                                        <?= e(date('d-m-Y', strtotime($row['tanggal']))) ?>
+                                    </td>
                                     <td>
                                         <span class="badge text-bg-secondary">
                                             <?= e(($row['jam1'] ?: '-') . ' - ' . ($row['jam2'] ?: '-')) ?>
