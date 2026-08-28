@@ -136,5 +136,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    if (!document.querySelector('footer')) {
+        const footer = document.createElement('footer');
+
+        footer.className = 'border-top bg-white py-4 text-center text-secondary small mt-4';
+        footer.textContent = 'DokterReminder · PHP Native + MySQL + whatsapp-web.js';
+
+        document.body.appendChild(footer);
+    }
+
     updateVisibility();
 });
