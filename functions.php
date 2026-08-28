@@ -119,6 +119,46 @@ function reminderTemplate(): string
     return $template;
 }
 
+function doctorLeaveCodes(string $date): array
+{
+    static $cache = [];
+
+    if (isset($cache[$date])) {
+        return $cache[$date];
+    }
+
+    try {
+        $statement = get_db('rme')->prepare("
+            SELECT DISTINCT dokter_id
+            FROM surat_ijin
+            WHERE tanggal = ?
+                AND dokter_id IS NOT NULL
+                AND dokter_id != ''
+                AND deleted IS NULL
+        ");
+
+        $statement->execute([$date]);
+        $codes = [];
+
+        foreach ($statement->fetchAll(PDO::FETCH_COLUMN) as $doctorCode) {
+            $doctorCode = trim((string) $doctorCode);
+
+            if ($doctorCode !== '') {
+                $codes[$doctorCode] = true;
+            }
+        }
+
+        $cache[$date] = $codes;
+    } catch (Throwable $e) {
+        error_log(
+            'Gagal membaca rme.surat_ijin untuk tanggal ' . $date . ': ' . $e->getMessage()
+        );
+        $cache[$date] = [];
+    }
+
+    return $cache[$date];
+}
+
 function schedulesFor(string $date): array
 {
     static $cache = [];
@@ -174,7 +214,23 @@ function schedulesFor(string $date): array
     ");
 
     $statement->execute([$date]);
-    $cache[$date] = $statement->fetchAll();
+    $rows = $statement->fetchAll();
+    $leaveCodes = doctorLeaveCodes($date);
+
+    if ($leaveCodes) {
+        $rows = array_values(
+            array_filter(
+                $rows,
+                static function (array $row) use ($leaveCodes): bool {
+                    $doctorCode = trim((string) ($row['kode_dokter'] ?? ''));
+
+                    return $doctorCode === '' || !isset($leaveCodes[$doctorCode]);
+                }
+            )
+        );
+    }
+
+    $cache[$date] = $rows;
 
     return $cache[$date];
 }
