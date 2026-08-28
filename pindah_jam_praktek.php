@@ -23,34 +23,26 @@ $rows = [];
 $error = '';
 
 try {
-    $movedSchedules = movedPracticeSchedules($date);
+    $statement = get_db('rme')->prepare("
+        SELECT
+            dokter.no_dr AS dokter_id,
+            dokter.nama2 AS nama_dokter,
+            praktek.jam1,
+            praktek.jam2,
+            praktek.cjam1,
+            praktek.cjam2,
+            praktek.ctanggal
+        FROM praktek
+        INNER JOIN dokter_spesialis
+            ON praktek.dokter_spesialis_id = dokter_spesialis.id
+        INNER JOIN rsiklaten.dokter
+            ON dokter_spesialis.dokter_id = dokter.no_dr
+        WHERE praktek.ctanggal LIKE ?
+        ORDER BY dokter.nama2 ASC, praktek.jam1 ASC
+    ");
 
-    foreach ($movedSchedules as $doctorId => $schedules) {
-        foreach ($schedules as $schedule) {
-            $rows[] = [
-                'dokter_id' => $doctorId,
-                'nama_dokter' => (string) ($schedule['nama'] ?? $doctorId),
-                'jam1' => (string) ($schedule['jam1'] ?? ''),
-                'jam2' => (string) ($schedule['jam2'] ?? ''),
-                'cjam1' => (string) ($schedule['cjam1'] ?? ''),
-                'cjam2' => (string) ($schedule['cjam2'] ?? ''),
-                'tanggal' => (string) ($schedule['tanggal'] ?? $date)
-            ];
-        }
-    }
-
-    usort(
-        $rows,
-        static function (array $a, array $b): int {
-            $nameCompare = strcmp($a['nama_dokter'], $b['nama_dokter']);
-
-            if ($nameCompare !== 0) {
-                return $nameCompare;
-            }
-
-            return strcmp($a['cjam1'], $b['cjam1']);
-        }
-    );
+    $statement->execute(['%' . $date . '%']);
+    $rows = $statement->fetchAll();
 } catch (Throwable $e) {
     $error = $e->getMessage();
 }
@@ -135,7 +127,8 @@ try {
 
         <?php if ($error !== ''): ?>
             <div class="alert alert-danger">
-                Gagal mengambil data pindah jam praktek: <?= e($error) ?>
+                <div class="fw-semibold mb-1">Gagal mengambil data pindah jam praktek.</div>
+                <div><?= e($error) ?></div>
             </div>
         <?php endif; ?>
 
@@ -147,30 +140,22 @@ try {
                             <tr>
                                 <th>No</th>
                                 <th>Kode Dokter</th>
-                                <th>Nama Dokter</th>
-                                <th>Tanggal</th>
-                                <th>Jam Lama</th>
-                                <th>Jam Baru</th>
+                                <th>Dokter</th>
+                                <th>Jam Praktek</th>
+                                <th>Jam Realisasi</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($rows as $index => $row): ?>
                                 <tr>
                                     <td><?= $index + 1 ?></td>
-                                    <td><?= e($row['dokter_id']) ?></td>
-                                    <td><?= e($row['nama_dokter']) ?></td>
-                                    <td data-order="<?= e($row['tanggal']) ?>">
-                                        <?= e(date('d-m-Y', strtotime($row['tanggal']))) ?>
+                                    <td><?= e((string) ($row['dokter_id'] ?? '')) ?></td>
+                                    <td><?= e((string) ($row['nama_dokter'] ?? '')) ?></td>
+                                    <td>
+                                        <?= e((string) ($row['jam1'] ?? '-')) ?> - <?= e((string) ($row['jam2'] ?? '-')) ?>
                                     </td>
                                     <td>
-                                        <span class="badge text-bg-secondary">
-                                            <?= e(($row['jam1'] ?: '-') . ' - ' . ($row['jam2'] ?: '-')) ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge text-bg-success">
-                                            <?= e(($row['cjam1'] ?: '-') . ' - ' . ($row['cjam2'] ?: '-')) ?>
-                                        </span>
+                                        <?= e((string) ($row['cjam1'] ?? '-')) ?> - <?= e((string) ($row['cjam2'] ?? '-')) ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
