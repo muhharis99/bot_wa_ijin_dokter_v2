@@ -189,19 +189,19 @@ function movedPracticeSchedules(string $date): array
     try {
         $statement = get_db('rme')->prepare("
             SELECT
-                ds.dokter_id,
-                p.jam1,
-                p.jam2,
-                p.cjam1,
-                p.cjam2,
-                p.ctanggal
-            FROM praktek p
-            INNER JOIN dokter_spesialis ds
-                ON ds.id = p.dokter_spesialis_id
-            WHERE p.ctanggal LIKE ?
-                AND ds.dokter_id IS NOT NULL
-                AND ds.dokter_id != ''
-            ORDER BY p.id ASC
+                praktek.jam1,
+                praktek.jam2,
+                praktek.cjam1,
+                praktek.cjam2,
+                praktek.ctanggal,
+                dokter_spesialis.dokter_id,
+                dokter.nama2 AS nama
+            FROM praktek
+            INNER JOIN dokter_spesialis
+                ON praktek.dokter_spesialis_id = dokter_spesialis.id
+            INNER JOIN rsiklaten.dokter
+                ON dokter_spesialis.dokter_id = dokter.no_dr
+            WHERE praktek.ctanggal LIKE ?
         ");
 
         $statement->execute(['%' . $date . '%']);
@@ -211,15 +211,17 @@ function movedPracticeSchedules(string $date): array
             $newStart = normalizePracticeTime($row['cjam1'] ?? '');
             $newEnd = normalizePracticeTime($row['cjam2'] ?? '');
 
-            if ($doctorCode === '' || ($newStart === '' && $newEnd === '')) {
+            if ($doctorCode === '') {
                 continue;
             }
 
             $result[$doctorCode][] = [
+                'nama' => (string) ($row['nama'] ?? ''),
                 'jam1' => normalizePracticeTime($row['jam1'] ?? ''),
                 'jam2' => normalizePracticeTime($row['jam2'] ?? ''),
                 'cjam1' => $newStart,
-                'cjam2' => $newEnd
+                'cjam2' => $newEnd,
+                'tanggal' => $date
             ];
         }
     } catch (Throwable $e) {
