@@ -159,6 +159,158 @@ function doctorLeaveCodes(string $date): array
     return $cache[$date];
 }
 
+function normalizePracticeTime(?string $time): string
+{
+    $time = trim((string) $time);
+
+    if ($time === '') {
+        return '';
+    }
+
+    $timestamp = strtotime($time);
+
+    if ($timestamp === false) {
+        return $time;
+    }
+
+    return date('H:i:s', $timestamp);
+}
+
+function movedPracticeSchedules(string $date): array
+{
+    static $cache = [];
+
+    if (isset($cache[$date])) {
+        return $cache[$date];
+    }
+
+    $result = [];
+
+    try {
+        $statement = get_db('rme')->prepare("
+            SELECT
+                ds.dokter_id,
+                p.jam1,
+                p.jam2,
+                p.cjam1,
+                p.cjam2,
+                p.ctanggal
+            FROM praktek p
+            INNER JOIN dokter_spesialis ds
+                ON ds.id = p.dokter_spesialis_id
+            WHERE p.ctanggal LIKE ?
+                AND ds.dokter_id IS NOT NULL
+                AND ds.dokter_id != ''
+            ORDER BY p.id ASC
+        ");
+
+        $statement->execute(['%' . $date . '%']);
+
+        foreach ($statement->fetchAll() as $row) {
+            $doctorCode = trim((string) ($row['dokter_id'] ?? ''));
+            $newStart = normalizePracticeTime($row['cjam1'] ?? '');
+            $newEnd = normalizePracticeTime($row['cjam2'] ?? '');
+
+            if ($doctorCode === '' || ($newStart === '' && $newEnd === '')) {
+                continue;
+            }
+
+            $result[$doctorCode][] = [
+                'jam1' => normalizePracticeTime($row['jam1'] ?? ''),
+                'jam2' => normalizePracticeTime($row['jam2'] ?? ''),
+                'cjam1' => $newStart,
+                'cjam2' => $newEnd
+            ];
+        }
+    } catch (Throwable $e) {
+        error_log(
+            'Gagal membaca pindah jam praktek untuk tanggal ' . $date . ': ' . $e->getMessage()
+        );
+    }
+
+    $cache[$date] = $result;
+
+    return $cache[$date];
+}
+
+function applyMovedPracticeSchedules(array $rows, string $date): array
+{
+    $movedSchedules = movedPracticeSchedules($date);
+
+    if (!$movedSchedules || !$rows) {
+        return $rows;
+    }
+
+    $doctorScheduleCount = [];
+
+    foreach ($rows as $row) {
+        $doctorCode = trim((string) ($row['kode_dokter'] ?? ''));
+
+        if ($doctorCode !== '') {
+            $doctorScheduleCount[$doctorCode] = ($doctorScheduleCount[$doctorCode] ?? 0) + 1;
+        }
+    }
+
+    foreach ($rows as &$row) {
+        $doctorCode = trim((string) ($row['kode_dokter'] ?? ''));
+
+        if ($doctorCode === '' || empty($movedSchedules[$doctorCode])) {
+            continue;
+        }
+
+        $currentStart = normalizePracticeTime($row['jam_mulai'] ?? '');
+        $currentEnd = normalizePracticeTime($row['jam_selesai'] ?? '');
+        $match = null;
+
+        foreach ($movedSchedules[$doctorCode] as $candidate) {
+            $oldStartMatches = $candidate['jam1'] === '' || $candidate['jam1'] === $currentStart;
+            $oldEndMatches = $candidate['jam2'] === '' || $candidate['jam2'] === $currentEnd;
+
+            if ($oldStartMatches && $oldEndMatches) {
+                $match = $candidate;
+                break;
+            }
+        }
+
+        if ($match === null &&
+            ($doctorScheduleCount[$doctorCode] ?? 0) === 1 &&
+            count($movedSchedules[$doctorCode]) === 1) {
+            $match = $movedSchedules[$doctorCode][0];
+        }
+
+        if ($match === null) {
+            continue;
+        }
+
+        $row['jam_mulai_asli'] = (string) ($row['jam_mulai'] ?? '');
+        $row['jam_selesai_asli'] = (string) ($row['jam_selesai'] ?? '');
+
+        if ($match['cjam1'] !== '') {
+            $row['jam_mulai'] = $match['cjam1'];
+        }
+
+        if ($match['cjam2'] !== '') {
+            $row['jam_selesai'] = $match['cjam2'];
+        }
+
+        $row['jam_pindah'] = true;
+    }
+
+    unset($row);
+
+    usort(
+        $rows,
+        static function (array $a, array $b): int {
+            return strcmp(
+                (string) ($a['jam_mulai'] ?? ''),
+                (string) ($b['jam_mulai'] ?? '')
+            );
+        }
+    );
+
+    return $rows;
+}
+
 function schedulesFor(string $date): array
 {
     static $cache = [];
@@ -230,6 +382,7 @@ function schedulesFor(string $date): array
         );
     }
 
+    $rows = applyMovedPracticeSchedules($rows, $date);
     $cache[$date] = $rows;
 
     return $cache[$date];
