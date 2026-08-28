@@ -70,7 +70,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 submitting = true;
-                filterForm.submit();
+                window.setTimeout(function () {
+                    filterForm.submit();
+                }, 50);
             }
 
             if (doctorFilter) {
@@ -83,6 +85,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (scheduleDate) {
                 scheduleDate.addEventListener('change', submitFilter);
+            }
+
+            if (window.jQuery) {
+                const $ = window.jQuery;
+
+                if (doctorFilter) {
+                    $(doctorFilter)
+                        .off('.autoFilter')
+                        .on('select2:select.autoFilter select2:clear.autoFilter change.autoFilter', submitFilter);
+                }
+
+                if (poliFilter) {
+                    $(poliFilter)
+                        .off('.autoFilter')
+                        .on('select2:select.autoFilter select2:clear.autoFilter change.autoFilter', submitFilter);
+                }
             }
         }
 
