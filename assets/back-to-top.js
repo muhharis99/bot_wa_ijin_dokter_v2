@@ -3,6 +3,11 @@ navbarFixLink.rel = 'stylesheet';
 navbarFixLink.href = 'assets/navbar-fix.css';
 document.head.appendChild(navbarFixLink);
 
+const noHoverLink = document.createElement('link');
+noHoverLink.rel = 'stylesheet';
+noHoverLink.href = 'assets/no-hover.css';
+document.head.appendChild(noHoverLink);
+
 document.addEventListener('DOMContentLoaded', function () {
     const navbarBrand = document.querySelector('.navbar-brand');
 
