@@ -43,12 +43,48 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (dashboardTitle) {
         const dashboardHeader = dashboardTitle.closest('.row');
+        const filterForm = dashboardHeader
+            ? dashboardHeader.querySelector('form[method="get"]')
+            : null;
         const practiceDateElement = dashboardHeader
             ? dashboardHeader.querySelector('p.text-secondary')
             : null;
         const practiceDate = practiceDateElement
             ? practiceDateElement.textContent.trim()
             : '';
+
+        if (filterForm) {
+            const submitButton = filterForm.querySelector('button[type="submit"]');
+            const doctorFilter = filterForm.querySelector('#doctorFilter');
+            const poliFilter = filterForm.querySelector('#poliFilter');
+            const scheduleDate = filterForm.querySelector('#scheduleDate');
+            let submitting = false;
+
+            if (submitButton) {
+                submitButton.remove();
+            }
+
+            function submitFilter() {
+                if (submitting) {
+                    return;
+                }
+
+                submitting = true;
+                filterForm.submit();
+            }
+
+            if (doctorFilter) {
+                doctorFilter.addEventListener('change', submitFilter);
+            }
+
+            if (poliFilter) {
+                poliFilter.addEventListener('change', submitFilter);
+            }
+
+            if (scheduleDate) {
+                scheduleDate.addEventListener('change', submitFilter);
+            }
+        }
 
         if (practiceDate !== '') {
             document.querySelectorAll('h3.h5.mb-1').forEach(function (doctorName) {
