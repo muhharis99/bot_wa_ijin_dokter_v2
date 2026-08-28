@@ -20,7 +20,7 @@ body > footer,
 footer,
 .app-footer,
 .site-footer {
-    position: static !important;
+    position: relative !important;
     left: auto !important;
     right: auto !important;
     bottom: auto !important;
@@ -33,16 +33,18 @@ footer,
     min-height: 46px !important;
     margin: 0 !important;
     padding: 11px 16px !important;
+    overflow: hidden !important;
     border: 0 !important;
     border-radius: 0 !important;
     background: #389f6a !important;
     background-color: #389f6a !important;
     color: #ffffff !important;
     font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 0 !important;
     font-weight: 400 !important;
     line-height: 24px !important;
     text-align: center !important;
+    text-indent: -9999px !important;
+    white-space: nowrap !important;
     box-shadow: none !important;
     text-shadow: none !important;
     transform: none !important;
@@ -56,13 +58,20 @@ footer::before,
 .app-footer::before,
 .site-footer::before {
     content: "Dokter Reminder RSU Islam Klaten © 2026" !important;
-    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 11px 16px !important;
     color: #ffffff !important;
     font-family: Arial, Helvetica, sans-serif !important;
     font-size: 13px !important;
     font-weight: 400 !important;
     line-height: 24px !important;
     text-align: center !important;
+    text-indent: 0 !important;
+    white-space: normal !important;
 }
 
 body > footer:hover,
@@ -95,6 +104,7 @@ footer *,
     color: transparent !important;
     font-size: 0 !important;
     line-height: 0 !important;
+    text-indent: -9999px !important;
     box-shadow: none !important;
     transform: none !important;
 }
@@ -112,6 +122,7 @@ footer *,
     footer::before,
     .app-footer::before,
     .site-footer::before {
+        padding: 10px 12px !important;
         font-size: 12px !important;
         line-height: 22px !important;
     }
