@@ -3,15 +3,20 @@ navbarFixLink.rel = 'stylesheet';
 navbarFixLink.href = 'assets/navbar-fix.css';
 document.head.appendChild(navbarFixLink);
 
-const noHoverLink = document.createElement('link');
-noHoverLink.rel = 'stylesheet';
-noHoverLink.href = 'assets/no-hover.css';
-document.head.appendChild(noHoverLink);
-
 const rsiReferenceLink = document.createElement('link');
 rsiReferenceLink.rel = 'stylesheet';
 rsiReferenceLink.href = 'assets/rsi-reference.css';
 document.head.appendChild(rsiReferenceLink);
+
+const footerFixLink = document.createElement('link');
+footerFixLink.rel = 'stylesheet';
+footerFixLink.href = 'assets/footer-fix.css';
+document.head.appendChild(footerFixLink);
+
+const noHoverLink = document.createElement('link');
+noHoverLink.rel = 'stylesheet';
+noHoverLink.href = 'assets/no-hover.css';
+document.head.appendChild(noHoverLink);
 
 document.addEventListener('DOMContentLoaded', function () {
     const navbarBrand = document.querySelector('.navbar-brand');
@@ -195,7 +200,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!document.querySelector('footer')) {
         const footer = document.createElement('footer');
 
-        footer.className = 'text-center small mt-4';
         footer.textContent = 'DokterReminder · PHP Native + MySQL + whatsapp-web.js';
 
         document.body.appendChild(footer);
