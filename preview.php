@@ -136,34 +136,40 @@ if ($isLeave) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Preview Reminder</title>
 
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/style.css">
-    <link rel="stylesheet" href="assets/custom-theme.css">
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark">
+<body class="bg-body-tertiary">
+    <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
         <div class="container py-2">
-            <a class="navbar-brand fw-bold" href="index.php">
+            <a class="navbar-brand fw-bold text-success" href="index.php">
                 Dokter Reminder RSU Islam Klaten
             </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNavbar">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="index.php">Dashboard</a>
+                    <a class="nav-link" href="master.php">Master Data</a>
+                    <a class="nav-link" href="settings.php">Template</a>
+                    <a class="nav-link" href="report.php">Report</a>
+                    <a class="nav-link" href="dokter_ijin.php">Dokter Ijin</a>
+                    <a class="nav-link" href="pindah_jam_praktek.php">Pindah Jam Praktek</a>
+                </div>
+            </div>
         </div>
     </nav>
 
-    <main class="container py-4 py-lg-5 page-narrow">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <main class="container py-4 page-narrow">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
             <div>
                 <span class="badge text-bg-success-subtle text-success mb-2">
                     PREVIEW PESAN
                 </span>
-
                 <h1 class="h3 mb-1">
                     <?= preview_escape($doctorName) ?>
                 </h1>
-
                 <div class="d-flex flex-wrap align-items-center gap-2 text-secondary">
                     <span><?= preview_escape($displayDate) ?></span>
                     <span class="badge text-bg-<?= preview_escape($statusClass) ?>">
@@ -184,12 +190,11 @@ if ($isLeave) {
         <?php endif; ?>
 
         <?php if (!$isLeave && $hasActiveSchedule): ?>
-            <div class="card-modern shadow-sm">
-                <div class="card-header-modern">
+            <div class="card">
+                <div class="card-header">
                     Preview Pesan WhatsApp
                 </div>
-
-                <div class="card-body-modern">
+                <div class="card-body">
                     <div class="message-preview mb-0">
                         <?= nl2br(preview_escape($message)) ?>
                     </div>
@@ -198,6 +203,11 @@ if ($isLeave) {
         <?php endif; ?>
     </main>
 
+    <footer>
+        DokterReminder · PHP Native + MySQL + whatsapp-web.js
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/back-to-top.js"></script>
 </body>
 </html>
