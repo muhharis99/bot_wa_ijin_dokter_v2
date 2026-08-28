@@ -1,8 +1,3 @@
-const customThemeLink = document.createElement('link');
-customThemeLink.rel = 'stylesheet';
-customThemeLink.href = 'assets/custom-theme.css';
-document.head.appendChild(customThemeLink);
-
 document.addEventListener('DOMContentLoaded', function () {
     const navbarBrand = document.querySelector('.navbar-brand');
 
@@ -61,9 +56,9 @@ document.addEventListener('DOMContentLoaded', function () {
     button.style.justifyContent = 'center';
     button.style.border = '0';
     button.style.borderRadius = '50%';
-    button.style.background = '#0d6e4f';
+    button.style.background = '#009747';
     button.style.color = '#ffffff';
-    button.style.boxShadow = '0 4px 14px rgba(13, 110, 79, 0.28)';
+    button.style.boxShadow = 'none';
     button.style.cursor = 'pointer';
     button.style.zIndex = '1040';
     button.style.padding = '0';
