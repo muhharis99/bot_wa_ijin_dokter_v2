@@ -6,23 +6,34 @@ body {
 body {
     color: #333333 !important;
     font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 13px !important;
-    line-height: 1.45 !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+}
+
+.navbar-brand,
+.navbar .navbar-brand,
+.navbar .navbar-brand.text-success {
+    font-size: 18px !important;
+}
+
+.navbar .nav-link {
+    padding: 17px 13px !important;
+    font-size: 14px !important;
 }
 
 main.container {
     width: 100% !important;
-    max-width: 1240px !important;
+    max-width: 1280px !important;
     min-height: calc(100vh - 108px) !important;
     margin: 0 auto !important;
-    padding: 18px 22px 28px !important;
+    padding: 20px 24px 30px !important;
     border-left: 1px solid #cccccc !important;
     border-right: 1px solid #cccccc !important;
     background: #ffffff !important;
 }
 
 .page-narrow {
-    max-width: 960px !important;
+    max-width: 1000px !important;
 }
 
 h1,
@@ -38,18 +49,18 @@ h6 {
 
 h1.h3,
 .h3 {
-    font-size: 25px !important;
+    font-size: 28px !important;
 }
 
 h2.h5,
 h3.h5,
 .h5 {
-    font-size: 16px !important;
+    font-size: 18px !important;
 }
 
 .text-secondary,
 .small {
-    font-size: 12px !important;
+    font-size: 13px !important;
 }
 
 .card,
@@ -71,15 +82,15 @@ h3.h5,
 
 .card-header,
 .card-header-modern {
-    min-height: 32px !important;
-    padding: 7px 10px !important;
+    min-height: 36px !important;
+    padding: 8px 12px !important;
     border: 0 !important;
     border-radius: 0 !important;
     background: #389f6a !important;
     color: #ffffff !important;
-    font-size: 13px !important;
+    font-size: 14px !important;
     font-weight: 600 !important;
-    line-height: 18px !important;
+    line-height: 20px !important;
 }
 
 .card-header::before,
@@ -94,7 +105,7 @@ h3.h5,
 
 .card-body,
 .card-body-modern {
-    padding: 13px !important;
+    padding: 15px !important;
 }
 
 .row.g-3,
@@ -104,9 +115,9 @@ h3.h5,
 }
 
 .form-label {
-    margin-bottom: 4px !important;
+    margin-bottom: 5px !important;
     color: #333333 !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
     font-weight: 600 !important;
 }
 
@@ -114,25 +125,25 @@ h3.h5,
 .form-select,
 .select2-container--bootstrap-5 .select2-selection,
 .select2-container--default .select2-selection {
-    min-height: 34px !important;
-    height: 34px !important;
-    padding: 5px 8px !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 6px 9px !important;
     border: 1px solid #c8c8c8 !important;
     border-radius: 0 !important;
     background: #ffffff !important;
     color: #444444 !important;
-    font-size: 12px !important;
+    font-size: 14px !important;
     box-shadow: none !important;
 }
 
 textarea.form-control {
     height: auto !important;
-    min-height: 78px !important;
+    min-height: 90px !important;
 }
 
 .input-group .btn {
-    min-height: 34px !important;
-    height: 34px !important;
+    min-height: 38px !important;
+    height: 38px !important;
 }
 
 .select2-container {
@@ -144,21 +155,21 @@ textarea.form-control {
     border-radius: 0 !important;
     border-color: #c8c8c8 !important;
     box-shadow: none !important;
-    font-size: 12px !important;
+    font-size: 14px !important;
 }
 
 .select2-results__option {
-    padding: 6px 8px !important;
-    font-size: 12px !important;
+    padding: 7px 9px !important;
+    font-size: 14px !important;
 }
 
 .btn {
-    min-height: 32px !important;
-    padding: 5px 12px !important;
+    min-height: 36px !important;
+    padding: 6px 14px !important;
     border-radius: 0 !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
     font-weight: 500 !important;
-    line-height: 20px !important;
+    line-height: 22px !important;
     box-shadow: none !important;
 }
 
@@ -200,17 +211,17 @@ textarea.form-control {
 }
 
 .badge {
-    padding: 4px 8px !important;
+    padding: 5px 9px !important;
     border-radius: 0 !important;
-    font-size: 11px !important;
+    font-size: 12px !important;
     font-weight: 500 !important;
-    line-height: 16px !important;
+    line-height: 17px !important;
 }
 
 .alert {
-    padding: 8px 10px !important;
+    padding: 9px 12px !important;
     border-radius: 0 !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
 }
 
 .table-responsive {
@@ -219,20 +230,20 @@ textarea.form-control {
 }
 
 .table {
-    font-size: 12px !important;
+    font-size: 13px !important;
 }
 
 .table > :not(caption) > * > * {
-    padding: 7px 8px !important;
+    padding: 8px 10px !important;
     border-color: #d8d8d8 !important;
 }
 
 .table thead th {
-    padding: 8px !important;
+    padding: 9px 10px !important;
     border-bottom: 1px solid #bdbdbd !important;
     background: #f4f4f4 !important;
     color: #333333 !important;
-    font-size: 11px !important;
+    font-size: 13px !important;
     font-weight: 700 !important;
 }
 
@@ -241,40 +252,41 @@ textarea.form-control {
 }
 
 .list-group-item {
-    padding: 8px 10px !important;
+    padding: 9px 11px !important;
     border-color: #dddddd !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
 }
 
 .dt-container,
 .dataTables_wrapper {
-    font-size: 12px !important;
+    font-size: 13px !important;
 }
 
 .dt-container .dt-search input,
 .dt-container .dt-length select,
 .dataTables_wrapper .dataTables_filter input,
 .dataTables_wrapper .dataTables_length select {
-    min-height: 32px !important;
-    height: 32px !important;
+    min-height: 36px !important;
+    height: 36px !important;
     border-radius: 0 !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
 }
 
 .page-link,
 .dt-paging-button {
     border-radius: 0 !important;
-    font-size: 11px !important;
+    font-size: 13px !important;
 }
 
 .modal-content,
 .swal2-popup {
     border-radius: 0 !important;
     box-shadow: none !important;
+    font-size: 14px !important;
 }
 
 .modal-header {
-    padding: 9px 12px !important;
+    padding: 10px 13px !important;
     border-bottom: 0 !important;
     background: #389f6a !important;
     color: #ffffff !important;
@@ -282,21 +294,22 @@ textarea.form-control {
 
 .modal-header .modal-title {
     color: #ffffff !important;
-    font-size: 15px !important;
+    font-size: 17px !important;
 }
 
 .message-preview {
-    padding: 12px !important;
+    padding: 14px !important;
     border-radius: 0 !important;
     background: #f8f8f8 !important;
-    font-size: 12px !important;
+    font-size: 14px !important;
+    line-height: 1.6 !important;
 }
 
 #masterTabs {
     display: flex !important;
-    gap: 8px !important;
+    gap: 10px !important;
     margin: 0 !important;
-    padding: 12px !important;
+    padding: 14px !important;
     border: 0 !important;
     background: #f3f3f3 !important;
 }
@@ -306,13 +319,13 @@ textarea.form-control {
 }
 
 #masterTabs .nav-link {
-    min-width: 155px !important;
-    padding: 9px 16px !important;
+    min-width: 180px !important;
+    padding: 11px 18px !important;
     border: 1px solid #cfcfcf !important;
     border-radius: 0 !important;
     background: #ffffff !important;
     color: #444444 !important;
-    font-size: 13px !important;
+    font-size: 14px !important;
     font-weight: 600 !important;
     text-align: center !important;
 }
@@ -331,23 +344,23 @@ textarea.form-control {
 }
 
 #masterTabsContent {
-    padding-top: 4px !important;
+    padding-top: 6px !important;
 }
 
 .gateway-dot {
-    width: 10px !important;
-    height: 10px !important;
+    width: 11px !important;
+    height: 11px !important;
 }
 
 footer {
     width: 100% !important;
-    max-width: 1240px !important;
+    max-width: 1280px !important;
     margin: 0 auto !important;
-    padding: 9px 14px !important;
+    padding: 10px 15px !important;
     border: 0 !important;
     background: #389f6a !important;
     color: #ffffff !important;
-    font-size: 11px !important;
+    font-size: 12px !important;
 }
 
 footer * {
@@ -357,7 +370,7 @@ footer * {
 .flatpickr-calendar {
     border-radius: 0 !important;
     box-shadow: none !important;
-    font-size: 12px !important;
+    font-size: 13px !important;
 }
 
 .flatpickr-months {
@@ -372,13 +385,21 @@ footer * {
 }
 
 @media (max-width: 767.98px) {
+    body {
+        font-size: 13px !important;
+    }
+
     main.container {
-        padding: 14px !important;
+        padding: 15px !important;
     }
 
     .h3,
     h1.h3 {
-        font-size: 21px !important;
+        font-size: 23px !important;
+    }
+
+    .navbar .nav-link {
+        font-size: 13px !important;
     }
 
     #masterTabs {
