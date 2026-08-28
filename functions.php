@@ -131,13 +131,13 @@ function doctorLeaveCodes(string $date): array
         $statement = get_db('rme')->prepare("
             SELECT DISTINCT dokter_id
             FROM surat_ijin
-            WHERE tanggal = ?
+            WHERE praktek LIKE ?
                 AND dokter_id IS NOT NULL
                 AND dokter_id != ''
                 AND deleted IS NULL
         ");
 
-        $statement->execute([$date]);
+        $statement->execute(['%' . $date . '%']);
         $codes = [];
 
         foreach ($statement->fetchAll(PDO::FETCH_COLUMN) as $doctorCode) {
