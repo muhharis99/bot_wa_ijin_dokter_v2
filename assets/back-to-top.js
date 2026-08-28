@@ -37,5 +37,35 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    const dashboardTitle = Array.from(document.querySelectorAll('h1')).find(function (element) {
+        return element.textContent.trim() === 'Reminder Jadwal Dokter';
+    });
+
+    if (dashboardTitle) {
+        const dashboardHeader = dashboardTitle.closest('.row');
+        const practiceDateElement = dashboardHeader
+            ? dashboardHeader.querySelector('p.text-secondary')
+            : null;
+        const practiceDate = practiceDateElement
+            ? practiceDateElement.textContent.trim()
+            : '';
+
+        if (practiceDate !== '') {
+            document.querySelectorAll('h3.h5.mb-1').forEach(function (doctorName) {
+                const identity = doctorName.parentElement;
+
+                if (!identity || identity.querySelector('.doctor-practice-date')) {
+                    return;
+                }
+
+                const practiceInfo = document.createElement('div');
+                practiceInfo.className = 'doctor-practice-date small mt-1';
+                practiceInfo.innerHTML = '<span class="text-secondary">Praktek:</span> <span class="fw-semibold">' + practiceDate + '</span>';
+
+                identity.appendChild(practiceInfo);
+            });
+        }
+    }
+
     updateVisibility();
 });
