@@ -5,6 +5,23 @@ document.addEventListener('DOMContentLoaded', function () {
         navbarBrand.textContent = 'Dokter Reminder RSU Islam Klaten';
     }
 
+    const navbarMenu = document.querySelector('#mainNavbar .navbar-nav');
+
+    if (navbarMenu && !navbarMenu.querySelector('a[href="dokter_ijin.php"]')) {
+        const reportLink = navbarMenu.querySelector('a[href="report.php"]');
+        const leaveLink = document.createElement('a');
+
+        leaveLink.className = 'nav-link';
+        leaveLink.href = 'dokter_ijin.php';
+        leaveLink.textContent = 'Dokter Ijin';
+
+        if (reportLink && reportLink.nextSibling) {
+            navbarMenu.insertBefore(leaveLink, reportLink.nextSibling);
+        } else {
+            navbarMenu.appendChild(leaveLink);
+        }
+    }
+
     const button = document.createElement('button');
 
     button.type = 'button';
