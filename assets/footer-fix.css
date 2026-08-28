@@ -39,7 +39,7 @@ footer,
     background-color: #389f6a !important;
     color: #ffffff !important;
     font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 13px !important;
+    font-size: 0 !important;
     font-weight: 400 !important;
     line-height: 24px !important;
     text-align: center !important;
@@ -49,6 +49,20 @@ footer,
     transition: none !important;
     opacity: 1 !important;
     z-index: auto !important;
+}
+
+body > footer::before,
+footer::before,
+.app-footer::before,
+.site-footer::before {
+    content: "Dokter Reminder RSU Islam Klaten © 2026" !important;
+    display: block !important;
+    color: #ffffff !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    line-height: 24px !important;
+    text-align: center !important;
 }
 
 body > footer:hover,
@@ -78,12 +92,9 @@ footer *,
     padding: 0 !important;
     border: 0 !important;
     background: transparent !important;
-    color: #ffffff !important;
-    font-family: inherit !important;
-    font-size: inherit !important;
-    font-weight: inherit !important;
-    line-height: inherit !important;
-    text-align: center !important;
+    color: transparent !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
     box-shadow: none !important;
     transform: none !important;
 }
@@ -95,6 +106,12 @@ footer *,
     .site-footer {
         min-height: 44px !important;
         padding: 10px 12px !important;
+    }
+
+    body > footer::before,
+    footer::before,
+    .app-footer::before,
+    .site-footer::before {
         font-size: 12px !important;
         line-height: 22px !important;
     }
