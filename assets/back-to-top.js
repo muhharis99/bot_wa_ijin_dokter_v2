@@ -399,6 +399,48 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             }
         }
+
+        const previewLinks = Array.from(
+            document.querySelectorAll('a[href^="preview.php?id="]')
+        );
+
+        if (previewLinks.length > 0 && window.bootstrap) {
+            let previewModalElement = document.getElementById('previewReminderModal');
+
+            if (!previewModalElement) {
+                previewModalElement = document.createElement('div');
+                previewModalElement.className = 'modal fade';
+                previewModalElement.id = 'previewReminderModal';
+                previewModalElement.tabIndex = -1;
+                previewModalElement.setAttribute('aria-hidden', 'true');
+                previewModalElement.innerHTML = '<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Preview Reminder WhatsApp</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div><div class="modal-body p-0"><iframe id="previewReminderFrame" title="Preview Reminder WhatsApp" style="display:block;width:100%;height:72vh;border:0;background:#ffffff;"></iframe></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button></div></div></div>';
+                document.body.appendChild(previewModalElement);
+            }
+
+            const previewFrame = previewModalElement.querySelector('#previewReminderFrame');
+            const previewModal = bootstrap.Modal.getOrCreateInstance(previewModalElement);
+
+            previewLinks.forEach(function (previewLink) {
+                previewLink.removeAttribute('target');
+                previewLink.setAttribute('role', 'button');
+
+                previewLink.addEventListener('click', function (event) {
+                    event.preventDefault();
+
+                    if (previewFrame) {
+                        previewFrame.src = this.getAttribute('href');
+                    }
+
+                    previewModal.show();
+                });
+            });
+
+            previewModalElement.addEventListener('hidden.bs.modal', function () {
+                if (previewFrame) {
+                    previewFrame.src = 'about:blank';
+                }
+            });
+        }
     }
 
     const reportFilterForm = document.getElementById('reportFilterForm');
