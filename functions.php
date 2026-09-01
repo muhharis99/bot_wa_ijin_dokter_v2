@@ -390,18 +390,18 @@ function schedulesFor(string $date): array
     return $cache[$date];
 }
 
-function indenTableSchema(): array
+function tableSchema(string $table): array
 {
-    static $schema = null;
+    static $cache = [];
 
-    if ($schema !== null) {
-        return $schema;
+    if (isset($cache[$table])) {
+        return $cache[$table];
     }
 
     $schema = [];
 
     try {
-        $columns = get_db('rsi_byl')->query('SHOW COLUMNS FROM inden_kunjung')->fetchAll();
+        $columns = get_db('rsi_byl')->query('SHOW COLUMNS FROM `' . $table . '`')->fetchAll();
 
         foreach ($columns as $column) {
             $field = strtolower((string) ($column['Field'] ?? ''));
@@ -414,7 +414,14 @@ function indenTableSchema(): array
         $schema = [];
     }
 
-    return $schema;
+    $cache[$table] = $schema;
+
+    return $cache[$table];
+}
+
+function indenTableSchema(): array
+{
+    return tableSchema('inden_kunjung');
 }
 
 function firstExistingColumn(array $schema, array $candidates): ?string
@@ -428,10 +435,8 @@ function firstExistingColumn(array $schema, array $candidates): ?string
     return null;
 }
 
-function indenCount(string $date, string $doctorCode, array $items): int
+function buildCountFilter(array $schema, string $date, string $doctorCode, array $items): array
 {
-    static $cache = [];
-
     $poliCodes = [];
 
     foreach ($items as $item) {
@@ -445,43 +450,34 @@ function indenCount(string $date, string $doctorCode, array $items): int
     $poliCodes = array_values($poliCodes);
     sort($poliCodes);
 
-    $cacheKey = $date . '|' . $doctorCode . '|' . implode(',', $poliCodes);
-
-    if (isset($cache[$cacheKey])) {
-        return $cache[$cacheKey];
-    }
-
-    $schema = indenTableSchema();
-
-    if (!$schema) {
-        return $cache[$cacheKey] = 0;
-    }
-
     $dateColumn = firstExistingColumn($schema, [
         'tanggal',
         'tgl_kunjung',
         'tgl_masuk',
         'tgl_rs',
         'tgl_daftar',
-        'jadwal_tanggal'
+        'jadwal_tanggal',
+        'tgl'
     ]);
 
     $doctorColumn = firstExistingColumn($schema, [
         'kd_dr',
         'dokter_kd',
         'kd_dokter',
-        'doctor_id'
+        'doctor_id',
+        'dokter_id'
     ]);
 
     $poliColumn = firstExistingColumn($schema, [
         'kd_poli',
         'poli_kd',
         'kode_poli',
-        'poli_id'
+        'poli_id',
+        'kd_unit'
     ]);
 
     if ($dateColumn === null || $doctorColumn === null) {
-        return $cache[$cacheKey] = 0;
+        return [[], []];
     }
 
     $where = [];
@@ -512,11 +508,36 @@ function indenCount(string $date, string $doctorCode, array $items): int
 
     $deletedColumn = firstExistingColumn($schema, [
         'deleted',
-        'is_deleted'
+        'is_deleted',
+        'deleted_at'
     ]);
 
     if ($deletedColumn !== null) {
         $where[] = "(`{$deletedColumn}` IS NULL OR `{$deletedColumn}` = 0 OR `{$deletedColumn}` = '')";
+    }
+
+    return [$where, $params];
+}
+
+function indenCount(string $date, string $doctorCode, array $items): int
+{
+    static $cache = [];
+    $schema = indenTableSchema();
+
+    if (!$schema) {
+        return 0;
+    }
+
+    [$where, $params] = buildCountFilter($schema, $date, $doctorCode, $items);
+
+    if (!$where) {
+        return 0;
+    }
+
+    $cacheKey = $date . '|' . $doctorCode . '|' . md5(json_encode($params));
+
+    if (isset($cache[$cacheKey])) {
+        return $cache[$cacheKey];
     }
 
     try {
@@ -527,6 +548,55 @@ function indenCount(string $date, string $doctorCode, array $items): int
         $statement->execute($params);
         $cache[$cacheKey] = (int) $statement->fetchColumn();
     } catch (Throwable $e) {
+        error_log('Gagal menghitung inden_kunjung: ' . $e->getMessage());
+        $cache[$cacheKey] = 0;
+    }
+
+    return $cache[$cacheKey];
+}
+
+function patientCount(string $date, string $doctorCode, array $items): int
+{
+    static $cache = [];
+    $schema = tableSchema('antrean');
+
+    if (!$schema) {
+        return 0;
+    }
+
+    [$where, $params] = buildCountFilter($schema, $date, $doctorCode, $items);
+
+    if (!$where) {
+        return 0;
+    }
+
+    $cacheKey = $date . '|' . $doctorCode . '|' . md5(json_encode($params));
+
+    if (isset($cache[$cacheKey])) {
+        return $cache[$cacheKey];
+    }
+
+    $patientColumn = firstExistingColumn($schema, [
+        'no_reg',
+        'noreg',
+        'no_register',
+        'no_registrasi',
+        'id_kunjung'
+    ]);
+
+    $countExpression = $patientColumn !== null
+        ? "COUNT(DISTINCT `{$patientColumn}`)"
+        : 'COUNT(*)';
+
+    try {
+        $statement = get_db('rsi_byl')->prepare(
+            'SELECT ' . $countExpression . ' FROM antrean WHERE ' . implode(' AND ', $where)
+        );
+
+        $statement->execute($params);
+        $cache[$cacheKey] = (int) $statement->fetchColumn();
+    } catch (Throwable $e) {
+        error_log('Gagal menghitung antrean pasien: ' . $e->getMessage());
         $cache[$cacheKey] = 0;
     }
 
@@ -535,13 +605,13 @@ function indenCount(string $date, string $doctorCode, array $items): int
 
 function buildReminderMessage(array $doctor, array $items, string $date): string
 {
+    $primaryItems = isset($items[0]) ? [$items[0]] : [];
+    $additionalItems = array_slice($items, 1);
     $rows = '';
 
-    if (count($items) > 1) {
-        foreach ($items as $item) {
-            $rows .= "\n🕐 {$item['jam_mulai']} - {$item['jam_selesai']}\n";
-            $rows .= "   Poli {$item['nama_poli']} — {$item['lokasi']}\n";
-        }
+    foreach ($additionalItems as $item) {
+        $rows .= "\n🕐 {$item['jam_mulai']} - {$item['jam_selesai']}\n";
+        $rows .= "   Poli {$item['nama_poli']} — {$item['lokasi']}\n";
     }
 
     $formattedDate = indoDate($date);
@@ -551,11 +621,9 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         $dayName = indoDay($date);
     }
 
-    $inden = indenCount(
-        $date,
-        (string) $doctor['doctor_id'],
-        $items
-    );
+    $doctorCode = (string) ($doctor['doctor_id'] ?? '');
+    $jumlahPasien = patientCount($date, $doctorCode, $primaryItems);
+    $inden = indenCount($date, $doctorCode, $primaryItems);
 
     $variables = [
         '{{nama_dokter}}' => (string) ($doctor['nama_dokter'] ?? ''),
@@ -567,6 +635,7 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         '{{jam_mulai}}' => (string) ($items[0]['jam_mulai'] ?? ''),
         '{{jam_selesai}}' => (string) ($items[0]['jam_selesai'] ?? ''),
         '{{lokasi}}' => (string) ($items[0]['lokasi'] ?? $items[0]['nama_poli'] ?? ''),
+        '{{jumlah_pasien}}' => (string) $jumlahPasien,
         '{{inden}}' => (string) $inden,
         '{{nama_rs}}' => setting(
             'nama_rs',
@@ -574,13 +643,26 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         )
     ];
 
-    $message = strtr(
-        reminderTemplate(),
-        $variables
-    );
+    $template = reminderTemplate();
+    $message = strtr($template, $variables);
+
+    if (strpos($template, '{{jumlah_pasien}}') === false) {
+        $patientBlock = "Jumlah Pasien : {$jumlahPasien}\nJumlah Inden Pasien : {$inden}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\n";
+
+        if (strpos($message, 'Terima kasih.') !== false) {
+            $message = preg_replace(
+                '/Terima kasih\./',
+                $patientBlock . 'Terima kasih.',
+                $message,
+                1
+            );
+        } else {
+            $message .= "\n\n" . trim($patientBlock);
+        }
+    }
 
     if ($rows !== '') {
-        $message .= "\n\nJadwal lainnya hari ini:" . $rows;
+        $message .= "\n\nJadwal lainnya :\n" . ltrim($rows, "\n");
     }
 
     return sanitizeReminderMessage($message);
