@@ -537,7 +537,10 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
     }
 
     $doctorCode = (string) ($doctor['doctor_id'] ?? '');
-    $jumlahPasien = patientCount($date, $doctorCode, $items);
+    $isPracticeDay = $date === date('Y-m-d');
+    $jumlahPasien = $isPracticeDay
+        ? patientCount($date, $doctorCode, $items)
+        : 0;
     $inden = indenCount($date, $doctorCode, $items);
 
     $variables = [
@@ -561,18 +564,41 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
     $template = reminderTemplate();
     $message = strtr($template, $variables);
 
-    if (strpos($template, '{{jumlah_pasien}}') === false) {
-        $patientBlock = "Jumlah Pasien : {$jumlahPasien}\nJumlah Inden Pasien : {$inden}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\n";
+    if ($isPracticeDay) {
+        if (strpos($template, '{{jumlah_pasien}}') === false) {
+            $patientBlock = "Jumlah Pasien : {$jumlahPasien}\nJumlah Inden Pasien : {$inden}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\n";
 
-        if (strpos($message, 'Terima kasih.') !== false) {
-            $message = preg_replace(
-                '/Terima kasih\./',
-                $patientBlock . 'Terima kasih.',
-                $message,
-                1
-            );
-        } else {
-            $message .= "\n\n" . trim($patientBlock);
+            if (strpos($message, 'Terima kasih.') !== false) {
+                $message = preg_replace(
+                    '/Terima kasih\./',
+                    $patientBlock . 'Terima kasih.',
+                    $message,
+                    1
+                );
+            } else {
+                $message .= "\n\n" . trim($patientBlock);
+            }
+        }
+    } else {
+        $message = preg_replace(
+            '/^[ \t]*Jumlah Pasien\s*:\s*.*(?:\r?\n)?/mi',
+            '',
+            $message
+        );
+
+        if (strpos($template, '{{inden}}') === false) {
+            $indenBlock = "Jumlah Inden Pasien : {$inden}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\n";
+
+            if (strpos($message, 'Terima kasih.') !== false) {
+                $message = preg_replace(
+                    '/Terima kasih\./',
+                    $indenBlock . 'Terima kasih.',
+                    $message,
+                    1
+                );
+            } else {
+                $message .= "\n\n" . trim($indenBlock);
+            }
         }
     }
 
