@@ -401,6 +401,59 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    const reportFilterForm = document.getElementById('reportFilterForm');
+
+    if (reportFilterForm) {
+        const showReportButton = document.getElementById('showReportButton');
+        const startDate = document.getElementById('startDate');
+        const endDate = document.getElementById('endDate');
+        const statusFilter = document.getElementById('status');
+        let reportSubmitting = false;
+
+        if (showReportButton) {
+            const buttonColumn = showReportButton.closest('[class*="col-"]');
+
+            if (buttonColumn) {
+                buttonColumn.remove();
+            } else {
+                showReportButton.remove();
+            }
+        }
+
+        function submitReportFilter() {
+            if (reportSubmitting) {
+                return;
+            }
+
+            if (!startDate || !endDate || startDate.value.trim() === '' || endDate.value.trim() === '') {
+                return;
+            }
+
+            reportSubmitting = true;
+            window.setTimeout(function () {
+                reportFilterForm.submit();
+            }, 80);
+        }
+
+        if (startDate) {
+            startDate.addEventListener('change', submitReportFilter);
+        }
+
+        if (endDate) {
+            endDate.addEventListener('change', submitReportFilter);
+        }
+
+        if (statusFilter) {
+            statusFilter.addEventListener('change', submitReportFilter);
+        }
+
+        if (window.jQuery && statusFilter) {
+            window.jQuery(statusFilter)
+                .off('.reportAutoFilter')
+                .on('select2:select.reportAutoFilter select2:clear.reportAutoFilter change.reportAutoFilter', submitReportFilter);
+        }
+    }
+
     const footers = Array.from(document.querySelectorAll('footer'));
     let footer = footers.shift();
 
