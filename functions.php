@@ -519,6 +519,48 @@ function patientCount(string $date, string $doctorCode, array $items): int
     return $cache[$cacheKey];
 }
 
+function controlPlanCount(string $date, string $doctorCode): int
+{
+    static $cache = [];
+
+    $doctorCode = trim($doctorCode);
+
+    if ($date === '' || $doctorCode === '') {
+        return 0;
+    }
+
+    $cacheKey = $date . '|' . $doctorCode;
+
+    if (isset($cache[$cacheKey])) {
+        return $cache[$cacheKey];
+    }
+
+    try {
+        $statement = get_db('rme')->prepare("
+            SELECT COUNT(DISTINCT no_reg)
+            FROM surat_kontrol
+            WHERE dokter_id = ?
+                AND tgl_kontrol >= ?
+                AND tgl_kontrol < ?
+                AND no_reg IS NOT NULL
+                AND no_reg != ''
+        ");
+
+        $statement->execute([
+            $doctorCode,
+            $date . ' 00:00:00',
+            date('Y-m-d', strtotime($date . ' +1 day')) . ' 00:00:00'
+        ]);
+
+        $cache[$cacheKey] = (int) $statement->fetchColumn();
+    } catch (Throwable $e) {
+        error_log('Gagal menghitung rme.surat_kontrol: ' . $e->getMessage());
+        $cache[$cacheKey] = 0;
+    }
+
+    return $cache[$cacheKey];
+}
+
 function buildReminderMessage(array $doctor, array $items, string $date): string
 {
     $additionalItems = array_slice($items, 1);
@@ -542,6 +584,7 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         ? patientCount($date, $doctorCode, $items)
         : 0;
     $inden = indenCount($date, $doctorCode, $items);
+    $rencanaKontrol = controlPlanCount($date, $doctorCode);
 
     $variables = [
         '{{nama_dokter}}' => (string) ($doctor['nama_dokter'] ?? ''),
@@ -555,6 +598,7 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         '{{lokasi}}' => (string) ($items[0]['lokasi'] ?? $items[0]['nama_poli'] ?? ''),
         '{{jumlah_pasien}}' => (string) $jumlahPasien,
         '{{inden}}' => (string) $inden,
+        '{{rencana_kontrol}}' => (string) $rencanaKontrol,
         '{{nama_rs}}' => setting(
             'nama_rs',
             'RS Sehat Sentosa'
@@ -566,7 +610,7 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
 
     if ($isPracticeDay) {
         if (strpos($template, '{{jumlah_pasien}}') === false) {
-            $patientBlock = "Jumlah Pasien : {$jumlahPasien}\nJumlah Inden Pasien : {$inden}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\n";
+            $patientBlock = "Jumlah Pasien : {$jumlahPasien}\nJumlah Inden Pasien : {$inden}\nRencana Kontrol : {$rencanaKontrol}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\n";
 
             if (strpos($message, 'Terima kasih.') !== false) {
                 $message = preg_replace(
@@ -587,7 +631,7 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         );
 
         if (strpos($template, '{{inden}}') === false) {
-            $indenBlock = "Jumlah Inden Pasien : {$inden}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\n";
+            $indenBlock = "Jumlah Inden Pasien : {$inden}\nRencana Kontrol : {$rencanaKontrol}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\n";
 
             if (strpos($message, 'Terima kasih.') !== false) {
                 $message = preg_replace(
@@ -599,6 +643,19 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
             } else {
                 $message .= "\n\n" . trim($indenBlock);
             }
+        }
+    }
+
+    if (strpos($template, '{{rencana_kontrol}}') === false && strpos($message, 'Rencana Kontrol :') === false) {
+        if (preg_match('/Jumlah Inden Pasien\s*:\s*[^\n]*/i', $message)) {
+            $message = preg_replace(
+                '/(Jumlah Inden Pasien\s*:\s*[^\n]*)/i',
+                '$1' . "\nRencana Kontrol : {$rencanaKontrol}",
+                $message,
+                1
+            );
+        } else {
+            $message .= "\nRencana Kontrol : {$rencanaKontrol}";
         }
     }
 
