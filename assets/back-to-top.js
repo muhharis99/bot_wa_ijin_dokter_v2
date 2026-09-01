@@ -197,6 +197,208 @@ document.addEventListener('DOMContentLoaded', function () {
                 identity.appendChild(practiceInfo);
             });
         }
+
+        const scheduleHeading = Array.from(document.querySelectorAll('h2')).find(function (element) {
+            return element.textContent.trim() === 'Jadwal Dokter';
+        });
+
+        if (scheduleHeading && !document.getElementById('sendAllDoctors')) {
+            const headingRow = scheduleHeading.closest('.d-flex.justify-content-between');
+
+            if (headingRow) {
+                const bulkWrap = document.createElement('div');
+                bulkWrap.className = 'form-check d-flex align-items-center gap-2 mb-0';
+
+                const bulkCheckbox = document.createElement('input');
+                bulkCheckbox.className = 'form-check-input mt-0';
+                bulkCheckbox.type = 'checkbox';
+                bulkCheckbox.id = 'sendAllDoctors';
+
+                const bulkLabel = document.createElement('label');
+                bulkLabel.className = 'form-check-label fw-semibold';
+                bulkLabel.htmlFor = 'sendAllDoctors';
+                bulkLabel.textContent = 'Kirim Semua Dokter';
+
+                bulkWrap.appendChild(bulkCheckbox);
+                bulkWrap.appendChild(bulkLabel);
+                headingRow.appendChild(bulkWrap);
+
+                function randomDelaySeconds() {
+                    return Math.floor(Math.random() * 13) + 8;
+                }
+
+                function sleep(milliseconds) {
+                    return new Promise(function (resolve) {
+                        window.setTimeout(resolve, milliseconds);
+                    });
+                }
+
+                async function updateReminderStatus(reminderId, action) {
+                    const statusUrl = new URL(window.location.href);
+                    statusUrl.searchParams.set('action', action);
+                    statusUrl.searchParams.set('id', reminderId);
+
+                    await fetch(statusUrl.toString(), {
+                        method: 'GET',
+                        cache: 'no-store',
+                        redirect: 'follow'
+                    });
+                }
+
+                bulkCheckbox.addEventListener('change', async function () {
+                    if (!this.checked) {
+                        return;
+                    }
+
+                    const allWhatsappButtons = Array.from(
+                        document.querySelectorAll('.js-whatsapp')
+                    );
+
+                    const sendButtons = allWhatsappButtons.filter(function (whatsappButton) {
+                        const buttonText = whatsappButton.textContent.trim();
+
+                        return whatsappButton.dataset.phone &&
+                            whatsappButton.dataset.message &&
+                            whatsappButton.dataset.reminderId &&
+                            !buttonText.includes('Kirim Ulang');
+                    });
+
+                    if (sendButtons.length === 0) {
+                        this.checked = false;
+
+                        await Swal.fire({
+                            icon: 'info',
+                            title: 'Tidak ada reminder',
+                            text: 'Semua dokter yang tampil sudah dikirim atau data WhatsApp belum lengkap.',
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#198754'
+                        });
+
+                        return;
+                    }
+
+                    const confirmation = await Swal.fire({
+                        icon: 'question',
+                        title: 'Kirim Semua Dokter?',
+                        html: 'Sistem akan mengirim reminder ke <strong>' + sendButtons.length + ' dokter</strong> satu per satu.<br><br>Jeda antar nomor dibuat acak <strong>8–20 detik</strong> untuk menghindari pengiriman terlalu cepat.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, Kirim Semua',
+                        cancelButtonText: 'Batal',
+                        confirmButtonColor: '#198754',
+                        cancelButtonColor: '#6c757d',
+                        reverseButtons: true,
+                        focusCancel: true
+                    });
+
+                    if (!confirmation.isConfirmed) {
+                        this.checked = false;
+                        return;
+                    }
+
+                    const gatewayUrl = 'http://' + window.location.hostname + ':3210';
+                    let successCount = 0;
+                    let failedCount = 0;
+                    const failures = [];
+
+                    this.disabled = true;
+                    allWhatsappButtons.forEach(function (whatsappButton) {
+                        whatsappButton.disabled = true;
+                    });
+
+                    try {
+                        for (let index = 0; index < sendButtons.length; index++) {
+                            const whatsappButton = sendButtons[index];
+                            const phone = whatsappButton.dataset.phone;
+                            const message = whatsappButton.dataset.message;
+                            const reminderId = whatsappButton.dataset.reminderId;
+                            const doctorName = whatsappButton.dataset.doctorName || 'Dokter';
+
+                            Swal.fire({
+                                title: 'Mengirim Reminder',
+                                html: '<strong>' + (index + 1) + ' dari ' + sendButtons.length + '</strong><br>' + doctorName + '<br>' + phone,
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                showConfirmButton: false,
+                                didOpen: function () {
+                                    Swal.showLoading();
+                                }
+                            });
+
+                            try {
+                                const response = await fetch(gatewayUrl + '/send', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        phone: phone,
+                                        message: message
+                                    })
+                                });
+
+                                const result = await response.json();
+
+                                if (!response.ok || !result.success) {
+                                    throw new Error(result.message || 'Gagal mengirim WhatsApp.');
+                                }
+
+                                await updateReminderStatus(reminderId, 'sent');
+                                successCount++;
+                                whatsappButton.textContent = 'Kirim Ulang WhatsApp';
+                            } catch (error) {
+                                failedCount++;
+                                failures.push(doctorName);
+
+                                try {
+                                    await updateReminderStatus(reminderId, 'failed');
+                                } catch (statusError) {
+                                }
+                            }
+
+                            if (index < sendButtons.length - 1) {
+                                const delaySeconds = randomDelaySeconds();
+
+                                Swal.fire({
+                                    title: 'Menunggu Pengiriman Berikutnya',
+                                    html: 'Berhasil: <strong>' + successCount + '</strong> &nbsp; Gagal: <strong>' + failedCount + '</strong><br><br>Jeda acak: <strong>' + delaySeconds + ' detik</strong>',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false,
+                                    showConfirmButton: false,
+                                    didOpen: function () {
+                                        Swal.showLoading();
+                                    }
+                                });
+
+                                await sleep(delaySeconds * 1000);
+                            }
+                        }
+
+                        let resultHtml = 'Berhasil dikirim: <strong>' + successCount + '</strong><br>Gagal: <strong>' + failedCount + '</strong>';
+
+                        if (failures.length > 0) {
+                            resultHtml += '<br><br>Gagal dikirim ke:<br>' + failures.join('<br>');
+                        }
+
+                        await Swal.fire({
+                            icon: failedCount === 0 ? 'success' : 'warning',
+                            title: 'Pengiriman Selesai',
+                            html: resultHtml,
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#198754'
+                        });
+
+                        window.location.reload();
+                    } finally {
+                        this.checked = false;
+                        this.disabled = false;
+
+                        allWhatsappButtons.forEach(function (whatsappButton) {
+                            whatsappButton.disabled = false;
+                        });
+                    }
+                });
+            }
+        }
     }
 
     const footers = Array.from(document.querySelectorAll('footer'));
