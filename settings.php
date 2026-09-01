@@ -131,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <code>{{nama_rs}}</code>
                             <code>{{jumlah_pasien}}</code>
                             <code>{{inden}}</code>
+                            <code>{{rencana_kontrol}}</code>
                         </div>
                     </div>
 
