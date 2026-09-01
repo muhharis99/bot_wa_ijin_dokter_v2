@@ -303,10 +303,21 @@ function applyMovedPracticeSchedules(array $rows, string $date): array
     usort(
         $rows,
         static function (array $a, array $b): int {
-            return strcmp(
+            $keysA = [
                 (string) ($a['jam_mulai'] ?? ''),
-                (string) ($b['jam_mulai'] ?? '')
-            );
+                (string) ($a['jam_selesai'] ?? ''),
+                (string) ($a['poli_kd'] ?? ''),
+                (string) ($a['jadwal_id'] ?? '')
+            ];
+
+            $keysB = [
+                (string) ($b['jam_mulai'] ?? ''),
+                (string) ($b['jam_selesai'] ?? ''),
+                (string) ($b['poli_kd'] ?? ''),
+                (string) ($b['jadwal_id'] ?? '')
+            ];
+
+            return $keysA <=> $keysB;
         }
     );
 
@@ -365,7 +376,11 @@ function schedulesFor(string $date): array
         GROUP BY
             dj.dokter_kd,
             dj.poli_kd
-        ORDER BY dj.jam_mulai
+        ORDER BY
+            dj.jam_mulai,
+            dj.jam_selesai,
+            dj.poli_kd,
+            dj.id
     ");
 
     $statement->execute([$date]);
@@ -394,33 +409,45 @@ function schedulesFor(string $date): array
 function indenCount(string $date, string $doctorCode, array $items): int
 {
     static $cache = [];
-    $jadwalId = (int) ($items[0]['jadwal_id'] ?? 0);
+    $jadwalIds = [];
 
-    if ($jadwalId <= 0) {
+    foreach ($items as $item) {
+        $jadwalId = (int) ($item['jadwal_id'] ?? 0);
+
+        if ($jadwalId > 0) {
+            $jadwalIds[$jadwalId] = $jadwalId;
+        }
+    }
+
+    $jadwalIds = array_values($jadwalIds);
+    sort($jadwalIds);
+
+    if (!$jadwalIds) {
         return 0;
     }
 
-    $cacheKey = $date . '|' . $jadwalId;
+    $cacheKey = $date . '|' . implode(',', $jadwalIds);
 
     if (isset($cache[$cacheKey])) {
         return $cache[$cacheKey];
     }
 
     try {
+        $placeholders = implode(',', array_fill(0, count($jadwalIds), '?'));
+        $params = $jadwalIds;
+        $params[] = $date . ' 00:00:00';
+        $params[] = date('Y-m-d', strtotime($date . ' +1 day')) . ' 00:00:00';
+
         $statement = get_db('rsi_byl')->prepare("
             SELECT COUNT(*)
             FROM inden_kunjung
-            WHERE jadwal_id = ?
+            WHERE jadwal_id IN ({$placeholders})
                 AND tgl_masuk >= ?
                 AND tgl_masuk < ?
                 AND (deleted IS NULL OR deleted = 0 OR deleted = '')
         ");
 
-        $statement->execute([
-            $jadwalId,
-            $date . ' 00:00:00',
-            date('Y-m-d', strtotime($date . ' +1 day')) . ' 00:00:00'
-        ]);
+        $statement->execute($params);
 
         $cache[$cacheKey] = (int) $statement->fetchColumn();
     } catch (Throwable $e) {
@@ -436,35 +463,52 @@ function patientCount(string $date, string $doctorCode, array $items): int
     static $cache = [];
 
     $doctorCode = trim($doctorCode);
-    $poliCode = trim((string) ($items[0]['poli_kd'] ?? ''));
+    $poliCodes = [];
 
-    if ($date === '' || $doctorCode === '' || $poliCode === '') {
+    foreach ($items as $item) {
+        $poliCode = trim((string) ($item['poli_kd'] ?? ''));
+
+        if ($poliCode !== '') {
+            $poliCodes[$poliCode] = $poliCode;
+        }
+    }
+
+    $poliCodes = array_values($poliCodes);
+    sort($poliCodes);
+
+    if ($date === '' || $doctorCode === '' || !$poliCodes) {
         return 0;
     }
 
-    $cacheKey = $date . '|' . $doctorCode . '|' . $poliCode;
+    $cacheKey = $date . '|' . $doctorCode . '|' . implode(',', $poliCodes);
 
     if (isset($cache[$cacheKey])) {
         return $cache[$cacheKey];
     }
 
     try {
+        $placeholders = implode(',', array_fill(0, count($poliCodes), '?'));
+        $params = [
+            $date,
+            $doctorCode
+        ];
+
+        foreach ($poliCodes as $poliCode) {
+            $params[] = $poliCode;
+        }
+
         $statement = get_db('rme')->prepare("
             SELECT COUNT(DISTINCT no_reg)
             FROM rsiklaten.kunjung
             WHERE tanggal = ?
                 AND kd_dr = ?
-                AND kd_poli = ?
+                AND kd_poli IN ({$placeholders})
                 AND no_reg IS NOT NULL
                 AND no_reg != ''
                 AND deleted IS NULL
         ");
 
-        $statement->execute([
-            $date,
-            $doctorCode,
-            $poliCode
-        ]);
+        $statement->execute($params);
 
         $cache[$cacheKey] = (int) $statement->fetchColumn();
     } catch (Throwable $e) {
@@ -477,7 +521,6 @@ function patientCount(string $date, string $doctorCode, array $items): int
 
 function buildReminderMessage(array $doctor, array $items, string $date): string
 {
-    $primaryItems = isset($items[0]) ? [$items[0]] : [];
     $additionalItems = array_slice($items, 1);
     $rows = '';
 
@@ -494,8 +537,8 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
     }
 
     $doctorCode = (string) ($doctor['doctor_id'] ?? '');
-    $jumlahPasien = patientCount($date, $doctorCode, $primaryItems);
-    $inden = indenCount($date, $doctorCode, $primaryItems);
+    $jumlahPasien = patientCount($date, $doctorCode, $items);
+    $inden = indenCount($date, $doctorCode, $items);
 
     $variables = [
         '{{nama_dokter}}' => (string) ($doctor['nama_dokter'] ?? ''),
