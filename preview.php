@@ -38,32 +38,10 @@ try {
 
 $doctorId = trim((string) ($reminder['doctor_id'] ?? ''));
 $date = trim((string) ($reminder['tanggal'] ?? ''));
-$status = (string) ($reminder['status'] ?? 'READY');
 $message = (string) ($reminder['message'] ?? '');
-$doctorName = $doctorId;
 $isLeave = false;
 $hasActiveSchedule = false;
 $notice = '';
-
-if ($doctorId !== '') {
-    try {
-        $doctorStatement = get_db('rsi_byl')->prepare("
-            SELECT dokter_nama
-            FROM master_dokter
-            WHERE dokter_kd = ?
-            LIMIT 1
-        ");
-
-        $doctorStatement->execute([$doctorId]);
-        $doctorResult = $doctorStatement->fetch(PDO::FETCH_ASSOC);
-
-        if ($doctorResult && !empty($doctorResult['dokter_nama'])) {
-            $doctorName = (string) $doctorResult['dokter_nama'];
-        }
-    } catch (Throwable $e) {
-        $doctorName = $doctorId;
-    }
-}
 
 if ($doctorId !== '' && $date !== '') {
     $leaveCodes = doctorLeaveCodes($date);
@@ -111,108 +89,58 @@ if ($doctorId !== '' && $date !== '') {
         }
     }
 }
-
-$displayDate = $date !== '' ? date('d-m-Y', strtotime($date)) : '-';
-$statusClass = 'secondary';
-
-if ($isLeave) {
-    $statusClass = 'warning';
-    $status = 'IJIN';
-} elseif (!$hasActiveSchedule && $notice !== '') {
-    $statusClass = 'secondary';
-    $status = 'TIDAK AKTIF';
-} elseif ($status === 'SENT') {
-    $statusClass = 'success';
-} elseif ($status === 'FAILED') {
-    $statusClass = 'danger';
-} elseif ($status === 'OPENED') {
-    $statusClass = 'primary';
-}
 ?>
 <!doctype html>
 <html lang="id">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Preview Reminder</title>
+    <title>Preview Pesan</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/style.css">
-    <link rel="stylesheet" href="assets/navbar-fix.css">
-    <link rel="stylesheet" href="assets/rsi-reference.css">
-    <link rel="stylesheet" href="assets/footer-fix.css">
-    <link rel="stylesheet" href="assets/modal-fix.css">
-    <link rel="stylesheet" href="assets/no-hover.css">
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+        }
+
+        body {
+            font-size: 14px;
+        }
+
+        .preview-wrapper {
+            padding: 20px;
+        }
+
+        .message-preview {
+            white-space: normal;
+            line-height: 1.65;
+            color: #212529;
+        }
+
+        .alert {
+            margin: 0;
+        }
+    </style>
 </head>
-<body class="bg-body-tertiary">
-    <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
-        <div class="container py-2">
-            <a class="navbar-brand fw-bold text-success" href="index.php">
-                Dokter Reminder RSU Islam Klaten
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="mainNavbar">
-                <div class="navbar-nav ms-auto">
-                    <a class="nav-link" href="index.php">Dashboard</a>
-                    <a class="nav-link" href="master.php">Master Data</a>
-                    <a class="nav-link" href="settings.php">Template</a>
-                    <a class="nav-link" href="report.php">Report</a>
-                    <a class="nav-link" href="dokter_ijin.php">Dokter Ijin</a>
-                    <a class="nav-link" href="pindah_jam_praktek.php">Pindah Jam Praktek</a>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <main class="container py-4">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
-            <div>
-                <span class="badge text-bg-success-subtle text-success mb-2">
-                    PREVIEW PESAN
-                </span>
-                <h1 class="h3 mb-1">
-                    <?= preview_escape($doctorName) ?>
-                </h1>
-                <div class="d-flex flex-wrap align-items-center gap-2 text-secondary">
-                    <span><?= preview_escape($displayDate) ?></span>
-                    <span class="badge text-bg-<?= preview_escape($statusClass) ?>">
-                        <?= preview_escape($status) ?>
-                    </span>
-                </div>
-            </div>
-
-            <a class="btn btn-outline-secondary" href="index.php">
-                Kembali
-            </a>
-        </div>
-
+<body>
+    <div class="preview-wrapper">
         <?php if ($notice !== ''): ?>
             <div class="alert <?= $isLeave ? 'alert-warning' : 'alert-secondary' ?>">
                 <?= preview_escape($notice) ?>
             </div>
-        <?php endif; ?>
-
-        <?php if (!$isLeave && $hasActiveSchedule): ?>
-            <div class="card">
-                <div class="card-header">
-                    Preview Pesan WhatsApp
-                </div>
-                <div class="card-body">
-                    <div class="message-preview mb-0">
-                        <?= nl2br(preview_escape($message)) ?>
-                    </div>
-                </div>
+        <?php elseif ($hasActiveSchedule): ?>
+            <div class="message-preview">
+                <?= nl2br(preview_escape($message)) ?>
+            </div>
+        <?php else: ?>
+            <div class="alert alert-secondary">
+                Preview pesan tidak tersedia.
             </div>
         <?php endif; ?>
-    </main>
-
-    <footer>
-        DokterReminder · PHP Native + MySQL + whatsapp-web.js
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/back-to-top.js"></script>
+    </div>
 </body>
 </html>
