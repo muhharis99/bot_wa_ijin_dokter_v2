@@ -73,13 +73,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <span class="badge text-bg-success-subtle text-success mb-2">KONFIGURASI</span>
             <h1 class="h3 mb-1">Template WhatsApp</h1>
             <p class="text-secondary mb-0">
-                Pesan ini dipakai saat sistem membuat reminder baru.
+                Pesan ini dipakai saat sistem membuat dan memperbarui reminder.
             </p>
         </div>
 
         <?php if ($saved): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
-                Pengaturan berhasil disimpan. Reminder yang sudah dibuat tidak berubah.
+                Pengaturan berhasil disimpan.
                 <button
                     type="button"
                     class="btn-close"
@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             class="form-control font-monospace"
                             id="messageTemplate"
                             name="template"
-                            rows="16"
+                            rows="18"
                             required
                         ><?= e(setting('template', DEFAULT_TEMPLATE)) ?></textarea>
                     </div>
@@ -129,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <code>{{jam_selesai}}</code>
                             <code>{{lokasi}}</code>
                             <code>{{nama_rs}}</code>
+                            <code>{{jumlah_pasien}}</code>
                             <code>{{inden}}</code>
                         </div>
                     </div>
