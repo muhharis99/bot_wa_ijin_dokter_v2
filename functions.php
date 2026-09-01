@@ -434,37 +434,41 @@ function indenCount(string $date, string $doctorCode, array $items): int
 function patientCount(string $date, string $doctorCode, array $items): int
 {
     static $cache = [];
-    $jadwalId = (int) ($items[0]['jadwal_id'] ?? 0);
 
-    if ($jadwalId <= 0) {
+    $doctorCode = trim($doctorCode);
+    $poliCode = trim((string) ($items[0]['poli_kd'] ?? ''));
+
+    if ($date === '' || $doctorCode === '' || $poliCode === '') {
         return 0;
     }
 
-    $cacheKey = $date . '|' . $jadwalId;
+    $cacheKey = $date . '|' . $doctorCode . '|' . $poliCode;
 
     if (isset($cache[$cacheKey])) {
         return $cache[$cacheKey];
     }
 
     try {
-        $statement = get_db('rsi_byl')->prepare("
-            SELECT COUNT(*)
-            FROM antrean
-            WHERE jadwal_id = ?
-                AND tanggal >= ?
-                AND tanggal < ?
-                AND (deleted IS NULL OR deleted = 0 OR deleted = '')
+        $statement = get_db('rme')->prepare("
+            SELECT COUNT(DISTINCT no_reg)
+            FROM rsiklaten.kunjung
+            WHERE tanggal = ?
+                AND kd_dr = ?
+                AND kd_poli = ?
+                AND no_reg IS NOT NULL
+                AND no_reg != ''
+                AND deleted IS NULL
         ");
 
         $statement->execute([
-            $jadwalId,
-            $date . ' 00:00:00',
-            date('Y-m-d', strtotime($date . ' +1 day')) . ' 00:00:00'
+            $date,
+            $doctorCode,
+            $poliCode
         ]);
 
         $cache[$cacheKey] = (int) $statement->fetchColumn();
     } catch (Throwable $e) {
-        error_log('Gagal menghitung antrean pasien: ' . $e->getMessage());
+        error_log('Gagal menghitung rsiklaten.kunjung: ' . $e->getMessage());
         $cache[$cacheKey] = 0;
     }
 
