@@ -23,7 +23,174 @@ noHoverLink.rel = 'stylesheet';
 noHoverLink.href = 'assets/no-hover.css';
 document.head.appendChild(noHoverLink);
 
+const sweetAlertReady = new Promise(function (resolve) {
+    if (window.Swal) {
+        resolve(window.Swal);
+        return;
+    }
+
+    const existingScript = document.querySelector('script[src*="sweetalert2"]');
+
+    if (existingScript) {
+        existingScript.addEventListener('load', function () {
+            resolve(window.Swal || null);
+        }, { once: true });
+        existingScript.addEventListener('error', function () {
+            resolve(null);
+        }, { once: true });
+        return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+    script.async = true;
+    script.addEventListener('load', function () {
+        resolve(window.Swal || null);
+    }, { once: true });
+    script.addEventListener('error', function () {
+        resolve(null);
+    }, { once: true });
+    document.head.appendChild(script);
+});
+
+function getConfirmationCopy(form) {
+    const actionInput = form.querySelector('input[name="action"]');
+    const action = actionInput ? actionInput.value.trim() : '';
+    const submitButton = form.querySelector('button[type="submit"], input[type="submit"]');
+    const submitText = submitButton
+        ? (submitButton.textContent || submitButton.value || '').trim()
+        : '';
+
+    if (action === 'disable_contact') {
+        return {
+            title: 'Nonaktifkan Nomor WhatsApp?',
+            text: 'Apakah nomor WhatsApp dokter ini benar akan dinonaktifkan?',
+            confirmText: 'Ya, Nonaktifkan',
+            confirmColor: '#dc3545'
+        };
+    }
+
+    if (action === 'save_contact') {
+        return {
+            title: 'Simpan Nomor WhatsApp?',
+            text: 'Pastikan dokter dan nomor WhatsApp yang dipilih sudah benar.',
+            confirmText: 'Ya, Simpan',
+            confirmColor: '#198754'
+        };
+    }
+
+    if (/hapus|delete/i.test(action + ' ' + submitText)) {
+        return {
+            title: 'Hapus Data?',
+            text: 'Apakah data benar di hapus? Tindakan ini akan mengubah data pada sistem.',
+            confirmText: 'Ya, Hapus',
+            confirmColor: '#dc3545'
+        };
+    }
+
+    if (/nonaktif|disable/i.test(action + ' ' + submitText)) {
+        return {
+            title: 'Nonaktifkan Data?',
+            text: 'Apakah data ini benar akan dinonaktifkan?',
+            confirmText: 'Ya, Nonaktifkan',
+            confirmColor: '#dc3545'
+        };
+    }
+
+    if (/aktif|enable/i.test(action + ' ' + submitText)) {
+        return {
+            title: 'Aktifkan Data?',
+            text: 'Apakah data ini benar akan diaktifkan?',
+            confirmText: 'Ya, Aktifkan',
+            confirmColor: '#198754'
+        };
+    }
+
+    return {
+        title: 'Simpan Perubahan?',
+        text: 'Pastikan data yang diisi sudah benar sebelum melanjutkan.',
+        confirmText: 'Ya, Simpan',
+        confirmColor: '#198754'
+    };
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('form').forEach(function (form) {
+        const method = (form.getAttribute('method') || 'get').toLowerCase();
+
+        if (method !== 'post' || form.dataset.swalConfirmation === 'off') {
+            return;
+        }
+
+        form.querySelectorAll('[onclick*="confirm("]').forEach(function (element) {
+            element.removeAttribute('onclick');
+        });
+
+        form.addEventListener('submit', async function (event) {
+            if (form.dataset.confirmedSubmit === '1') {
+                return;
+            }
+
+            event.preventDefault();
+
+            const SwalInstance = await sweetAlertReady;
+            const copy = getConfirmationCopy(form);
+
+            if (!SwalInstance) {
+                if (window.confirm(copy.text)) {
+                    form.dataset.confirmedSubmit = '1';
+                    form.submit();
+                }
+
+                return;
+            }
+
+            const result = await SwalInstance.fire({
+                icon: 'question',
+                title: copy.title,
+                text: copy.text,
+                showCancelButton: true,
+                confirmButtonText: copy.confirmText,
+                cancelButtonText: 'Batal',
+                confirmButtonColor: copy.confirmColor,
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
+                focusCancel: true,
+                allowOutsideClick: false
+            });
+
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            form.dataset.confirmedSubmit = '1';
+            form.submit();
+        });
+    });
+
+    const serverNotice = document.querySelector('.alert.alert-success, .alert.alert-danger');
+
+    if (serverNotice && serverNotice.textContent.trim() !== '') {
+        const noticeText = serverNotice.textContent.trim();
+        const isSuccess = serverNotice.classList.contains('alert-success');
+
+        sweetAlertReady.then(function (SwalInstance) {
+            if (!SwalInstance) {
+                return;
+            }
+
+            serverNotice.remove();
+
+            SwalInstance.fire({
+                icon: isSuccess ? 'success' : 'error',
+                title: isSuccess ? 'Berhasil' : 'Gagal',
+                text: noticeText,
+                confirmButtonText: 'OK',
+                confirmButtonColor: isSuccess ? '#198754' : '#dc3545'
+            });
+        });
+    }
+
     const navbarBrand = document.querySelector('.navbar-brand');
 
     if (navbarBrand) {
