@@ -61,4 +61,4 @@ CREATE TABLE IF NOT EXISTS settings (
 
 INSERT IGNORE INTO settings (`key`, `value`) VALUES
 ('nama_rs', 'RS Sehat Sentosa'),
-('template', 'Selamat pagi {{nama_dokter}}.\n\nMengingatkan bahwa hari ini Anda memiliki jadwal praktik:\n\n📅 {{tanggal}}\n🏥 {{nama_rs}}\n🩺 Poli: {{nama_poli}}\n🕐 Jam: {{jam_mulai}} - {{jam_selesai}}\n📍 Lokasi: {{lokasi}}\n\nMohon hadir sesuai jadwal praktik.\n\nTerima kasih.');
+('template', 'Assalamualaikum, {{nama_dokter}}.\n\nMengingatkan bahwa Anda memiliki jadwal praktik:\n\n📅 {{tanggal}}\n🏥 {{nama_rs}}\n🩺 Poli: {{nama_poli}}\n🕐 Jam: {{jam_mulai}} - {{jam_selesai}}\n📍 Lokasi: {{lokasi}}\n\nJumlah Pasien : {{jumlah_pasien}}\nJumlah Inden Pasien : {{inden}}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\nTerima kasih.\nWassalamualaikum, Wr.Wb');
