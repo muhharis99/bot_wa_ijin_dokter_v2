@@ -20,6 +20,7 @@ let incomingQueueProcessing = false;
 
 const incomingQueue = new Map();
 const completedIncoming = new Map();
+const contactPhoneMap = new Map();
 
 const timeFormatter = new Intl.DateTimeFormat('id-ID', {
     timeZone: 'Asia/Jakarta',
@@ -69,6 +70,21 @@ function normalizePhone(value) {
     }
 
     return phone;
+}
+
+function isValidIndonesianPhone(value) {
+    return /^62\d{8,15}$/.test(normalizePhone(value));
+}
+
+function rememberContactPhone(contactId, phone) {
+    const id = String(contactId || '').trim();
+    const normalizedPhone = normalizePhone(phone);
+
+    if (id === '' || !isValidIndonesianPhone(normalizedPhone)) {
+        return;
+    }
+
+    contactPhoneMap.set(id, normalizedPhone);
 }
 
 function now() {
@@ -132,12 +148,122 @@ function incomingMessageType(message) {
     return type;
 }
 
-function incomingPayload(message) {
-    if (!message || message.fromMe) {
+function isOutgoingMessage(message) {
+    return message?.fromMe === true ||
+        message?.id?.fromMe === true ||
+        String(message?.id?.fromMe || '').toLowerCase() === 'true';
+}
+
+function phoneCandidatesFromContact(contact) {
+    if (!contact) {
+        return [];
+    }
+
+    return [
+        contact.number,
+        contact.id?.user,
+        contact.phoneNumber?.user,
+        contact.phoneNumber?._serialized,
+        contact._data?.number,
+        contact._data?.phoneNumber?.user,
+        contact._data?.phoneNumber?._serialized,
+        contact._data?.id?.user
+    ];
+}
+
+async function resolveIncomingPhone(message) {
+    const source = String(message?.author || message?.from || '').trim();
+
+    if (source === '') {
+        return '';
+    }
+
+    if (contactPhoneMap.has(source)) {
+        return contactPhoneMap.get(source);
+    }
+
+    if (source.endsWith('@c.us')) {
+        const directPhone = normalizePhone(source.split('@')[0]);
+
+        if (isValidIndonesianPhone(directPhone)) {
+            rememberContactPhone(source, directPhone);
+            return directPhone;
+        }
+    }
+
+    const rawCandidates = [
+        message?._data?.senderObj?.phoneNumber?.user,
+        message?._data?.senderObj?.phoneNumber?._serialized,
+        message?._data?.from?.phoneNumber?.user,
+        message?._data?.from?.phoneNumber?._serialized,
+        message?.rawData?.senderObj?.phoneNumber?.user,
+        message?.rawData?.senderObj?.phoneNumber?._serialized
+    ];
+
+    for (const candidate of rawCandidates) {
+        const phone = normalizePhone(candidate);
+
+        if (isValidIndonesianPhone(phone)) {
+            rememberContactPhone(source, phone);
+            return phone;
+        }
+    }
+
+    try {
+        const contact = await message.getContact();
+
+        for (const candidate of phoneCandidatesFromContact(contact)) {
+            const phone = normalizePhone(candidate);
+
+            if (isValidIndonesianPhone(phone)) {
+                rememberContactPhone(source, phone);
+                rememberContactPhone(contact?.id?._serialized, phone);
+                return phone;
+            }
+        }
+    } catch (error) {
+        console.warn(
+            'Gagal resolve contact incoming:',
+            source,
+            error.message || error
+        );
+    }
+
+    try {
+        const contact = await client.getContactById(source);
+
+        for (const candidate of phoneCandidatesFromContact(contact)) {
+            const phone = normalizePhone(candidate);
+
+            if (isValidIndonesianPhone(phone)) {
+                rememberContactPhone(source, phone);
+                rememberContactPhone(contact?.id?._serialized, phone);
+                return phone;
+            }
+        }
+    } catch (error) {
+        console.warn(
+            'Gagal resolve contact by id:',
+            source,
+            error.message || error
+        );
+    }
+
+    terminalLog('CHAT DOKTER MASUK BELUM TERIDENTIFIKASI', {
+        Status: 'SENDER_TIDAK_DIKENAL',
+        Source: source,
+        MessageId: message?.id?._serialized || '-'
+    });
+
+    return '';
+}
+
+async function incomingPayload(message) {
+    if (!message || isOutgoingMessage(message)) {
         return null;
     }
 
-    const source = String(message.from || '');
+    const source = String(message.author || message.from || '');
 
     if (source === '' ||
         source === 'status@broadcast' ||
@@ -146,7 +272,7 @@ function incomingPayload(message) {
         return null;
     }
 
-    const phone = normalizePhone(source.split('@')[0]);
+    const phone = await resolveIncomingPhone(message);
     const messageId = message?.id?._serialized || '';
 
     if (!phone || !messageId) {
@@ -191,8 +317,8 @@ function cleanupCompletedIncoming() {
     }
 }
 
-function enqueueIncomingMessage(message, eventName) {
-    const payload = incomingPayload(message);
+async function enqueueIncomingMessage(message, eventName) {
+    const payload = await incomingPayload(message);
 
     if (!payload) {
         return;
@@ -374,11 +500,15 @@ client.on('disconnected', (reason) => {
 });
 
 client.on('message', (message) => {
-    enqueueIncomingMessage(message, 'message');
+    enqueueIncomingMessage(message, 'message').catch((error) => {
+        console.error('Gagal memproses event message:', error);
+    });
 });
 
 client.on('message_create', (message) => {
-    enqueueIncomingMessage(message, 'message_create');
+    enqueueIncomingMessage(message, 'message_create').catch((error) => {
+        console.error('Gagal memproses event message_create:', error);
+    });
 });
 
 app.get('/', (req, res) => {
@@ -493,7 +623,8 @@ app.get('/status', (req, res) => {
         ready: waState === 'READY',
         hasQr: Boolean(qrDataUrl),
         error: lastError,
-        incomingQueue: incomingQueue.size
+        incomingQueue: incomingQueue.size,
+        mappedContacts: contactPhoneMap.size
     });
 });
 
@@ -553,12 +684,19 @@ app.post('/send', async (req, res) => {
             });
         }
 
+        rememberContactPhone(numberId._serialized, phone);
+
         const sentMessage = await client.sendMessage(
             numberId._serialized,
             message
         );
 
         const messageId = sentMessage?.id?._serialized || null;
+
+        rememberContactPhone(sentMessage?.to, phone);
+        rememberContactPhone(sentMessage?.id?.remote, phone);
+        rememberContactPhone(sentMessage?._data?.to?._serialized, phone);
+        rememberContactPhone(sentMessage?._data?.to?.user, phone);
 
         terminalLog('WHATSAPP BERHASIL DIKIRIM', {
             Status: 'BERHASIL',
