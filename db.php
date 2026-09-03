@@ -36,7 +36,7 @@ function syncDefaultReminderTemplate(PDO $pdo): void
         $hasIndenCount = strpos($template, '{{inden}}') !== false;
         $hasQuotaQuestion = stripos(
             $template,
-            'Apakah ada pembatasan untuk kuota pasien nggih dokter?'
+            'Apakah ada perubahan Jadwal atau Pembatasan Kuota dokter?'
         ) !== false;
 
         if (!$hasPatientCount || !$hasIndenCount || !$hasQuotaQuestion) {
