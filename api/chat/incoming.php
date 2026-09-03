@@ -82,7 +82,7 @@ try {
         $messageType,
         $message,
         $receivedAt,
-        date('Y-m-d H:i:s')
+        $receivedAt
     ]);
 
     chatJson([
