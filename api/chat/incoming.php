@@ -28,17 +28,38 @@ if (!is_array($payload)) {
 }
 
 $messageId = trim((string) ($payload['message_id'] ?? ''));
+$doctorId = trim((string) ($payload['doctor_id'] ?? ''));
 $phone = chatNormalizePhone((string) ($payload['phone'] ?? ''));
 $messageType = trim((string) ($payload['message_type'] ?? 'text'));
 $message = trim((string) ($payload['message'] ?? ''));
 $receivedAt = trim((string) ($payload['received_at'] ?? ''));
 
-if ($messageId === '' || $phone === '') {
+if ($messageId === '') {
     chatJson([
         'success' => false,
-        'message' => 'message_id dan phone wajib diisi.'
+        'message' => 'message_id wajib diisi.'
     ], 422);
 }
+
+$doctor = null;
+
+if ($doctorId !== '') {
+    $doctor = chatDoctorById($doctorId);
+}
+
+if (!$doctor && $phone !== '') {
+    $doctor = chatDoctorByPhone($phone);
+}
+
+if (!$doctor) {
+    chatJson([
+        'success' => false,
+        'message' => 'Pengirim tidak dapat dipetakan ke dokter.'
+    ], 422);
+}
+
+$doctorId = $doctor['doctor_id'];
+$phone = $doctor['phone'];
 
 if ($message === '') {
     $message = '[' . strtoupper($messageType !== '' ? $messageType : 'MESSAGE') . ']';
@@ -47,9 +68,6 @@ if ($message === '') {
 if ($messageType === '') {
     $messageType = 'text';
 }
-
-$doctor = chatDoctorByPhone($phone);
-$doctorId = $doctor['doctor_id'] ?? null;
 
 if ($receivedAt !== '') {
     $timestamp = strtotime($receivedAt);
@@ -88,7 +106,8 @@ try {
     chatJson([
         'success' => true,
         'saved' => $statement->rowCount() > 0,
-        'doctor_id' => $doctorId
+        'doctor_id' => $doctorId,
+        'phone' => $phone
     ]);
 } catch (Throwable $e) {
     error_log('Gagal menyimpan chat WhatsApp masuk: ' . $e->getMessage());
