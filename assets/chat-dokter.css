@@ -1,26 +1,63 @@
-.chat-page {
-    min-height: calc(100vh - 120px);
+body.page-chat-dokter {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
-.chat-shell {
-    height: calc(100vh - 185px);
-    min-height: 560px;
-    overflow: hidden;
+body.page-chat-dokter > nav {
+    flex: 0 0 auto !important;
 }
 
-.chat-sidebar,
-.chat-main,
-.chat-active {
-    min-height: 0;
+body.page-chat-dokter .chat-page {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
-.chat-sidebar {
+body.page-chat-dokter .chat-page-heading {
+    flex: 0 0 auto !important;
+}
+
+body.page-chat-dokter .chat-shell {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: hidden !important;
+}
+
+body.page-chat-dokter .chat-shell > .row {
+    height: 100% !important;
+    min-height: 0 !important;
+}
+
+body.page-chat-dokter .chat-sidebar,
+body.page-chat-dokter .chat-main,
+body.page-chat-dokter .chat-active {
+    height: 100% !important;
+    min-height: 0 !important;
+}
+
+body.page-chat-dokter .chat-sidebar {
+    display: flex !important;
+    flex-direction: column !important;
     background: #ffffff;
+    overflow: hidden !important;
 }
 
-.chat-contact-list {
-    height: calc(100% - 94px);
-    overflow-y: auto;
+body.page-chat-dokter .chat-search-box {
+    flex: 0 0 auto !important;
+}
+
+body.page-chat-dokter .chat-contact-list {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 
 .chat-contact-item {
@@ -56,30 +93,39 @@
     max-width: 220px;
 }
 
-.chat-main {
+body.page-chat-dokter .chat-main {
     background: #f5f7f6;
+    overflow: hidden !important;
 }
 
-.chat-empty {
+body.page-chat-dokter .chat-empty {
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 24px;
+    overflow: hidden;
 }
 
-.chat-active {
+body.page-chat-dokter .chat-active {
     display: flex;
     flex-direction: column;
+    overflow: hidden !important;
 }
 
-.chat-header,
-.chat-composer {
+body.page-chat-dokter .chat-active.d-none {
+    display: none !important;
+}
+
+body.page-chat-dokter .chat-header,
+body.page-chat-dokter .chat-composer {
     flex: 0 0 auto;
 }
 
-.chat-messages {
+body.page-chat-dokter .chat-messages {
     flex: 1 1 auto;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 20px;
     background: #eef3f0;
 }
@@ -139,20 +185,50 @@
     resize: none;
 }
 
+body.page-chat-dokter > footer,
+body.page-chat-dokter footer,
+body.page-chat-dokter .app-footer,
+body.page-chat-dokter .site-footer {
+    flex: 0 0 auto !important;
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    z-index: auto !important;
+}
+
 @media (max-width: 991.98px) {
-    .chat-shell {
-        height: auto;
-        min-height: 0;
+    body.page-chat-dokter {
+        height: auto !important;
+        min-height: 100vh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
     }
 
-    .chat-sidebar {
-        height: 320px;
+    body.page-chat-dokter .chat-page {
+        overflow: visible !important;
+    }
+
+    body.page-chat-dokter .chat-shell {
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+    }
+
+    body.page-chat-dokter .chat-shell > .row {
+        height: auto !important;
+    }
+
+    body.page-chat-dokter .chat-sidebar {
+        height: 320px !important;
         border-right: 0 !important;
         border-bottom: 1px solid #dee2e6;
     }
 
-    .chat-main {
-        height: 620px;
+    body.page-chat-dokter .chat-main {
+        height: 620px !important;
     }
 
     .chat-bubble {
