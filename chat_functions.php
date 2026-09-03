@@ -34,16 +34,17 @@ function chatDoctorDirectory(): array
 
     $statement = get_db('rsi_byl')->query("
         SELECT
-            md.dokter_kd,
+            kd.kd_dr AS dokter_kd,
             md.dokter_nama,
             kd.no_hp
-        FROM master_dokter md
-        INNER JOIN kontak_dokter kd
-            ON kd.kd_dr = md.dokter_kd
+        FROM kontak_dokter kd
+        LEFT JOIN master_dokter md
+            ON md.dokter_kd = kd.kd_dr
         WHERE kd.no_hp IS NOT NULL
             AND kd.no_hp != ''
             AND kd.no_hp != '0'
-        ORDER BY md.dokter_nama ASC
+        ORDER BY
+            COALESCE(NULLIF(md.dokter_nama, ''), kd.kd_dr) ASC
     ");
 
     $directory = [];
@@ -52,14 +53,21 @@ function chatDoctorDirectory(): array
         $doctorId = trim((string) ($row['dokter_kd'] ?? ''));
         $phoneRaw = trim((string) ($row['no_hp'] ?? ''));
         $phone = chatNormalizePhone($phoneRaw);
+        $name = trim((string) ($row['dokter_nama'] ?? ''));
 
         if ($doctorId === '' || $phone === '') {
             continue;
         }
 
+        if ($name === '') {
+            $name = $doctorId === 'S666'
+                ? 'Muhammad Haris'
+                : $doctorId;
+        }
+
         $directory[$doctorId] = [
             'doctor_id' => $doctorId,
-            'name' => trim((string) ($row['dokter_nama'] ?? '')),
+            'name' => $name,
             'phone_raw' => $phoneRaw,
             'phone' => $phone
         ];
