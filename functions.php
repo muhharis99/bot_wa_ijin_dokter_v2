@@ -388,6 +388,22 @@ function schedulesFor(string $date): array
 
     $statement->execute([$date]);
     $rows = $statement->fetchAll();
+
+    $rows = array_values(
+        array_filter(
+            $rows,
+            static function (array $row): bool {
+                $poliCode = strtoupper(trim((string) ($row['poli_kd'] ?? '')));
+                $poliName = strtoupper(trim((string) ($row['nama_poli'] ?? '')));
+                $location = strtoupper(trim((string) ($row['lokasi'] ?? '')));
+
+                return strpos($poliCode, 'CAPD') === false &&
+                    strpos($poliName, 'CAPD') === false &&
+                    strpos($location, 'CAPD') === false;
+            }
+        )
+    );
+
     $leaveCodes = doctorLeaveCodes($date);
 
     if ($leaveCodes) {
