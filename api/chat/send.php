@@ -40,6 +40,7 @@ if (strlen($message) > 20000) {
 try {
     $gateway = chatGatewayRequest('/send', [
         'phone' => $doctor['phone'],
+        'doctor_id' => $doctorId,
         'message' => $message
     ]);
 
