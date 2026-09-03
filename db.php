@@ -6,6 +6,54 @@ require_once __DIR__ . '/config.php';
 
 $_pdo_connections = [];
 
+function syncDefaultReminderTemplate(PDO $pdo): void
+{
+    static $synced = false;
+
+    if ($synced) {
+        return;
+    }
+
+    $synced = true;
+
+    try {
+        $statement = $pdo->prepare(
+            "SELECT `value` FROM settings WHERE `key` = 'template' LIMIT 1"
+        );
+        $statement->execute();
+        $template = (string) ($statement->fetchColumn() ?: '');
+
+        if ($template === '') {
+            $insert = $pdo->prepare("
+                INSERT INTO settings (`key`, `value`)
+                VALUES ('template', ?)
+            ");
+            $insert->execute([DEFAULT_TEMPLATE]);
+            return;
+        }
+
+        $hasPatientCount = strpos($template, '{{jumlah_pasien}}') !== false;
+        $hasIndenCount = strpos($template, '{{inden}}') !== false;
+        $hasQuotaQuestion = stripos(
+            $template,
+            'Apakah ada pembatasan untuk kuota pasien nggih dokter?'
+        ) !== false;
+
+        if (!$hasPatientCount || !$hasIndenCount || !$hasQuotaQuestion) {
+            $update = $pdo->prepare("
+                UPDATE settings
+                SET `value` = ?
+                WHERE `key` = 'template'
+            ");
+            $update->execute([DEFAULT_TEMPLATE]);
+        }
+    } catch (Throwable $e) {
+        error_log(
+            'Gagal menyinkronkan template reminder database: ' . $e->getMessage()
+        );
+    }
+}
+
 function get_db(string $name = 'local'): PDO
 {
     global $_pdo_connections;
@@ -44,6 +92,10 @@ function get_db(string $name = 'local'): PDO
                 PDO::ATTR_EMULATE_PREPARES => false
             ]
         );
+
+        if ($name === 'local') {
+            syncDefaultReminderTemplate($_pdo_connections[$name]);
+        }
     } catch (PDOException $e) {
         error_log(
             "Database connection error for '$name' ($host:$port): " .
