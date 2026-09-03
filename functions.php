@@ -372,7 +372,8 @@ function schedulesFor(string $date): array
                 'P084',
                 'P085',
                 'P086',
-                'GCU'
+                'GCU',
+                'CAPD'
             )
         GROUP BY
             dj.dokter_kd,
