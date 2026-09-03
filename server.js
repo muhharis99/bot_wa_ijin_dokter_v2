@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const QRCode = require('qrcode');
+const fs = require('fs');
+const path = require('path');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 
 const app = express();
@@ -8,6 +10,7 @@ const PORT = Number(process.env.WA_PORT || 3210);
 const HOST = process.env.WA_HOST || '0.0.0.0';
 const CHAT_INCOMING_URL = process.env.CHAT_INCOMING_URL ||
     'http://127.0.0.1/dokter-reminder/api/chat/incoming.php';
+const CHAT_IDENTITY_FILE = path.join(__dirname, '.chat_identity_map.json');
 
 app.disable('x-powered-by');
 app.use(cors());
@@ -20,7 +23,7 @@ let incomingQueueProcessing = false;
 
 const incomingQueue = new Map();
 const completedIncoming = new Map();
-const contactPhoneMap = new Map();
+const contactIdentityMap = new Map();
 
 const timeFormatter = new Intl.DateTimeFormat('id-ID', {
     timeZone: 'Asia/Jakarta',
@@ -76,16 +79,77 @@ function isValidIndonesianPhone(value) {
     return /^62\d{8,15}$/.test(normalizePhone(value));
 }
 
-function rememberContactPhone(contactId, phone) {
-    const id = String(contactId || '').trim();
+function loadIdentityMap() {
+    try {
+        if (!fs.existsSync(CHAT_IDENTITY_FILE)) {
+            return;
+        }
+
+        const raw = fs.readFileSync(CHAT_IDENTITY_FILE, 'utf8');
+        const data = JSON.parse(raw);
+
+        if (!data || typeof data !== 'object') {
+            return;
+        }
+
+        Object.entries(data).forEach(([identityId, identity]) => {
+            if (!identity || typeof identity !== 'object') {
+                return;
+            }
+
+            const phone = normalizePhone(identity.phone);
+            const doctorId = String(identity.doctor_id || '').trim();
+
+            if (identityId && isValidIndonesianPhone(phone)) {
+                contactIdentityMap.set(identityId, {
+                    phone,
+                    doctor_id: doctorId
+                });
+            }
+        });
+    } catch (error) {
+        console.error('Gagal membaca mapping chat dokter:', error.message || error);
+    }
+}
+
+function saveIdentityMap() {
+    try {
+        const data = {};
+
+        for (const [identityId, identity] of contactIdentityMap.entries()) {
+            data[identityId] = identity;
+        }
+
+        fs.writeFileSync(
+            CHAT_IDENTITY_FILE,
+            JSON.stringify(data, null, 2),
+            'utf8'
+        );
+    } catch (error) {
+        console.error('Gagal menyimpan mapping chat dokter:', error.message || error);
+    }
+}
+
+function rememberIdentity(identityId, phone, doctorId = '') {
+    const id = String(identityId || '').trim();
     const normalizedPhone = normalizePhone(phone);
+    const normalizedDoctorId = String(doctorId || '').trim();
 
     if (id === '' || !isValidIndonesianPhone(normalizedPhone)) {
         return;
     }
 
-    contactPhoneMap.set(id, normalizedPhone);
+    const existing = contactIdentityMap.get(id) || {};
+
+    contactIdentityMap.set(id, {
+        phone: normalizedPhone,
+        doctor_id: normalizedDoctorId || existing.doctor_id || ''
+    });
+
+    saveIdentityMap();
 }
+
+loadIdentityMap();
 
 function now() {
     return timeFormatter.format(new Date());
@@ -171,23 +235,71 @@ function phoneCandidatesFromContact(contact) {
     ];
 }
 
-async function resolveIncomingPhone(message) {
-    const source = String(message?.author || message?.from || '').trim();
+function identityById(identityId) {
+    const id = String(identityId || '').trim();
 
-    if (source === '') {
-        return '';
+    if (id === '') {
+        return null;
     }
 
-    if (contactPhoneMap.has(source)) {
-        return contactPhoneMap.get(source);
+    return contactIdentityMap.get(id) || null;
+}
+
+async function resolveIncomingIdentity(message) {
+    const sourceIds = [
+        message?.author,
+        message?.from,
+        message?.id?.remote
+    ]
+        .map((value) => String(value || '').trim())
+        .filter(Boolean);
+
+    for (const sourceId of sourceIds) {
+        const mapped = identityById(sourceId);
+
+        if (mapped) {
+            return mapped;
+        }
     }
 
-    if (source.endsWith('@c.us')) {
-        const directPhone = normalizePhone(source.split('@')[0]);
+    try {
+        const chat = await message.getChat();
+        const chatIds = [
+            chat?.id?._serialized,
+            chat?.id?.user,
+            chat?._data?.id?._serialized,
+            chat?._data?.id?.user
+        ]
+            .map((value) => String(value || '').trim())
+            .filter(Boolean);
+
+        for (const chatId of chatIds) {
+            const mapped = identityById(chatId);
+
+            if (mapped) {
+                sourceIds.forEach((sourceId) => {
+                    rememberIdentity(sourceId, mapped.phone, mapped.doctor_id);
+                });
+
+                return mapped;
+            }
+        }
+    } catch (error) {
+        console.warn('Gagal membaca chat incoming:', error.message || error);
+    }
+
+    for (const sourceId of sourceIds) {
+        if (!sourceId.endsWith('@c.us')) {
+            continue;
+        }
+
+        const directPhone = normalizePhone(sourceId.split('@')[0]);
 
         if (isValidIndonesianPhone(directPhone)) {
-            rememberContactPhone(source, directPhone);
-            return directPhone;
+            return {
+                phone: directPhone,
+                doctor_id: ''
+            };
         }
     }
 
@@ -204,8 +316,10 @@ async function resolveIncomingPhone(message) {
         const phone = normalizePhone(candidate);
 
         if (isValidIndonesianPhone(phone)) {
-            rememberContactPhone(source, phone);
-            return phone;
+            return {
+                phone,
+                doctor_id: ''
+            };
         }
     }
 
@@ -216,46 +330,33 @@ async function resolveIncomingPhone(message) {
             const phone = normalizePhone(candidate);
 
             if (isValidIndonesianPhone(phone)) {
-                rememberContactPhone(source, phone);
-                rememberContactPhone(contact?.id?._serialized, phone);
-                return phone;
+                const contactId = String(contact?.id?._serialized || '').trim();
+
+                if (contactId !== '') {
+                    rememberIdentity(contactId, phone, '');
+                }
+
+                sourceIds.forEach((sourceId) => {
+                    rememberIdentity(sourceId, phone, '');
+                });
+
+                return {
+                    phone,
+                    doctor_id: ''
+                };
             }
         }
     } catch (error) {
-        console.warn(
-            'Gagal resolve contact incoming:',
-            source,
-            error.message || error
-        );
-    }
-
-    try {
-        const contact = await client.getContactById(source);
-
-        for (const candidate of phoneCandidatesFromContact(contact)) {
-            const phone = normalizePhone(candidate);
-
-            if (isValidIndonesianPhone(phone)) {
-                rememberContactPhone(source, phone);
-                rememberContactPhone(contact?.id?._serialized, phone);
-                return phone;
-            }
-        }
-    } catch (error) {
-        console.warn(
-            'Gagal resolve contact by id:',
-            source,
-            error.message || error
-        );
+        console.warn('Gagal resolve contact incoming:', error.message || error);
     }
 
     terminalLog('CHAT DOKTER MASUK BELUM TERIDENTIFIKASI', {
         Status: 'SENDER_TIDAK_DIKENAL',
-        Source: source,
+        Source: sourceIds.join(', ') || '-',
         MessageId: message?.id?._serialized || '-'
     });
 
-    return '';
+    return null;
 }
 
 async function incomingPayload(message) {
@@ -272,10 +373,10 @@ async function incomingPayload(message) {
         return null;
     }
 
-    const phone = await resolveIncomingPhone(message);
+    const identity = await resolveIncomingIdentity(message);
     const messageId = message?.id?._serialized || '';
 
-    if (!phone || !messageId) {
+    if (!identity || !messageId) {
         return null;
     }
 
@@ -286,7 +387,8 @@ async function incomingPayload(message) {
 
     return {
         message_id: messageId,
-        phone,
+        doctor_id: identity.doctor_id || '',
+        phone: identity.phone,
         message_type: incomingMessageType(message),
         message: incomingMessageContent(message),
         received_at: receivedAt
@@ -342,6 +444,7 @@ async function enqueueIncomingMessage(message, eventName) {
 
     terminalLog('CHAT DOKTER MASUK DITERIMA', {
         Status: 'MASUK ANTREAN',
+        DoctorId: payload.doctor_id || '-',
         Pengirim: payload.phone,
         MessageId: messageId,
         Event: eventName,
@@ -393,7 +496,8 @@ async function deliverIncomingItem(messageId, item) {
 
         terminalLog('CHAT DOKTER MASUK DISIMPAN', {
             Status: 'BERHASIL',
-            Pengirim: item.payload.phone,
+            DoctorId: result.doctor_id || item.payload.doctor_id || '-',
+            Pengirim: result.phone || item.payload.phone,
             MessageId: messageId,
             Percobaan: item.attempts + 1,
             Antrean: incomingQueue.size
@@ -406,6 +510,7 @@ async function deliverIncomingItem(messageId, item) {
 
         terminalLog('CHAT DOKTER MASUK MENUNGGU RETRY', {
             Status: 'RETRY',
+            DoctorId: item.payload.doctor_id || '-',
             Pengirim: item.payload.phone,
             MessageId: messageId,
             Percobaan: item.attempts,
@@ -463,7 +568,6 @@ client.on('qr', async (qr) => {
     } catch (error) {
         lastError = error.message;
         waState = 'ERROR';
-
         console.error('Gagal membuat QR:', error);
     }
 });
@@ -472,7 +576,6 @@ client.on('authenticated', () => {
     waState = 'AUTHENTICATED';
     qrDataUrl = null;
     lastError = null;
-
     console.log('WhatsApp berhasil diautentikasi.');
 });
 
@@ -480,14 +583,12 @@ client.on('ready', () => {
     waState = 'READY';
     qrDataUrl = null;
     lastError = null;
-
     console.log('WhatsApp gateway READY.');
 });
 
 client.on('auth_failure', (message) => {
     waState = 'AUTH_FAILURE';
     lastError = String(message || 'Authentication failure');
-
     console.error('WhatsApp auth failure:', message);
 });
 
@@ -495,7 +596,6 @@ client.on('disconnected', (reason) => {
     waState = 'DISCONNECTED';
     qrDataUrl = null;
     lastError = String(reason || 'Disconnected');
-
     console.warn('WhatsApp disconnected:', reason);
 });
 
@@ -519,100 +619,22 @@ app.get('/', (req, res) => {
             : 'Menyiapkan WhatsApp';
 
     const qrSection = waState === 'QR_READY' && qrDataUrl
-        ? `
-            <div class="mb-4">
-                <img
-                    class="img-fluid border rounded-3 p-2 bg-white"
-                    src="${qrDataUrl}"
-                    alt="QR WhatsApp"
-                    width="240"
-                    height="240"
-                >
-            </div>
-            <p class="text-secondary mb-0">
-                Buka WhatsApp di HP, pilih Perangkat tertaut, lalu scan QR ini.
-            </p>
-        `
+        ? `<div class="mb-4"><img class="img-fluid border rounded-3 p-2 bg-white" src="${qrDataUrl}" alt="QR WhatsApp" width="240" height="240"></div><p class="text-secondary mb-0">Buka WhatsApp di HP, pilih Perangkat tertaut, lalu scan QR ini.</p>`
         : '';
 
     const readySection = waState === 'READY'
-        ? `
-            <div class="display-3 text-success mb-3">✓</div>
-            <h2 class="h4 mb-2">WhatsApp siap digunakan</h2>
-            <p class="text-secondary mb-0">
-                Dashboard PHP dapat mengirim pesan langsung melalui gateway ini.
-            </p>
-        `
+        ? `<div class="display-3 text-success mb-3">✓</div><h2 class="h4 mb-2">WhatsApp siap digunakan</h2><p class="text-secondary mb-0">Dashboard PHP dapat mengirim pesan langsung melalui gateway ini.</p>`
         : '';
 
     const waitingSection = waState !== 'QR_READY' && waState !== 'READY'
-        ? `
-            <h2 class="h4 mb-3">${statusLabel}</h2>
-            <p class="text-secondary mb-0">
-                Status: <code>${waState}</code>. Halaman akan memperbarui otomatis.
-            </p>
-        `
+        ? `<h2 class="h4 mb-3">${statusLabel}</h2><p class="text-secondary mb-0">Status: <code>${waState}</code>. Halaman akan memperbarui otomatis.</p>`
         : '';
 
     const errorSection = lastError
-        ? `
-            <div class="alert alert-danger mt-4 mb-0">
-                ${String(lastError).replace(/</g, '&lt;')}
-            </div>
-        `
+        ? `<div class="alert alert-danger mt-4 mb-0">${String(lastError).replace(/</g, '&lt;')}</div>`
         : '';
 
-    res.send(`<!doctype html>
-<html lang="id">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>WhatsApp Gateway</title>
-
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-</head>
-<body class="bg-body-tertiary">
-    <main class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-12 col-md-8 col-lg-6">
-                <div class="card shadow-sm border-0">
-                    <div class="card-body p-4 p-lg-5 text-center">
-                        <span class="badge text-bg-success-subtle text-success mb-3">
-                            ${statusLabel}
-                        </span>
-
-                        ${qrSection}
-                        ${readySection}
-                        ${waitingSection}
-                        ${errorSection}
-
-                        <div class="mt-4">
-                            <button
-                                class="btn btn-outline-secondary btn-sm"
-                                type="button"
-                                onclick="location.reload()"
-                            >
-                                Refresh
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <script>
-        if (${JSON.stringify(waState)} !== 'READY') {
-            setTimeout(function () {
-                location.reload();
-            }, 5000);
-        }
-    </script>
-</body>
-</html>`);
+    res.send(`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>WhatsApp Gateway</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"></head><body class="bg-body-tertiary"><main class="container py-5"><div class="row justify-content-center"><div class="col-12 col-md-8 col-lg-6"><div class="card shadow-sm border-0"><div class="card-body p-4 p-lg-5 text-center"><span class="badge text-bg-success-subtle text-success mb-3">${statusLabel}</span>${qrSection}${readySection}${waitingSection}${errorSection}<div class="mt-4"><button class="btn btn-outline-secondary btn-sm" type="button" onclick="location.reload()">Refresh</button></div></div></div></div></div></main><script>if (${JSON.stringify(waState)} !== 'READY') { setTimeout(function () { location.reload(); }, 5000); }</script></body></html>`);
 });
 
 app.get('/status', (req, res) => {
@@ -624,29 +646,24 @@ app.get('/status', (req, res) => {
         hasQr: Boolean(qrDataUrl),
         error: lastError,
         incomingQueue: incomingQueue.size,
-        mappedContacts: contactPhoneMap.size
+        mappedContacts: contactIdentityMap.size
     });
 });
 
 app.post('/send', async (req, res) => {
     const phone = normalizePhone(req.body.phone);
+    const doctorId = String(req.body.doctor_id || '').trim();
     const message = String(req.body.message || '').trim();
 
     terminalLog('PERMINTAAN KIRIM WHATSAPP', {
         Status: 'MEMPROSES',
+        DoctorId: doctorId || '-',
         Tujuan: phone || '-',
         PanjangPesan: message.length
     });
 
     try {
         if (waState !== 'READY') {
-            terminalLog('WHATSAPP GAGAL DIKIRIM', {
-                Status: 'GAGAL',
-                Tujuan: phone || '-',
-                Alasan: 'WhatsApp gateway belum READY',
-                Gateway: waState
-            });
-
             return res.status(503).json({
                 success: false,
                 message: 'WhatsApp belum terhubung. Scan QR terlebih dahulu.',
@@ -654,14 +671,7 @@ app.post('/send', async (req, res) => {
             });
         }
 
-        if (!phone) {
-            return res.status(422).json({
-                success: false,
-                message: 'Nomor WhatsApp kosong.'
-            });
-        }
-
-        if (!/^62\d{8,15}$/.test(phone)) {
+        if (!phone || !/^62\d{8,15}$/.test(phone)) {
             return res.status(422).json({
                 success: false,
                 message: 'Format nomor WhatsApp tidak valid.'
@@ -684,7 +694,8 @@ app.post('/send', async (req, res) => {
             });
         }
 
-        rememberContactPhone(numberId._serialized, phone);
+        rememberIdentity(numberId._serialized, phone, doctorId);
+        rememberIdentity(numberId.user, phone, doctorId);
 
         const sentMessage = await client.sendMessage(
             numberId._serialized,
@@ -693,27 +704,49 @@ app.post('/send', async (req, res) => {
 
         const messageId = sentMessage?.id?._serialized || null;
 
-        rememberContactPhone(sentMessage?.to, phone);
-        rememberContactPhone(sentMessage?.id?.remote, phone);
-        rememberContactPhone(sentMessage?._data?.to?._serialized, phone);
-        rememberContactPhone(sentMessage?._data?.to?.user, phone);
+        rememberIdentity(sentMessage?.to, phone, doctorId);
+        rememberIdentity(sentMessage?.id?.remote, phone, doctorId);
+        rememberIdentity(sentMessage?._data?.to?._serialized, phone, doctorId);
+        rememberIdentity(sentMessage?._data?.to?.user, phone, doctorId);
+
+        try {
+            const chat = await sentMessage.getChat();
+
+            rememberIdentity(chat?.id?._serialized, phone, doctorId);
+            rememberIdentity(chat?.id?.user, phone, doctorId);
+            rememberIdentity(chat?._data?.id?._serialized, phone, doctorId);
+            rememberIdentity(chat?._data?.id?.user, phone, doctorId);
+
+            try {
+                const contact = await chat.getContact();
+                rememberIdentity(contact?.id?._serialized, phone, doctorId);
+                rememberIdentity(contact?.id?.user, phone, doctorId);
+            } catch (contactError) {
+            }
+        } catch (chatError) {
+            console.warn('Gagal menyimpan mapping chat outgoing:', chatError.message || chatError);
+        }
 
         terminalLog('WHATSAPP BERHASIL DIKIRIM', {
             Status: 'BERHASIL',
+            DoctorId: doctorId || '-',
             Tujuan: phone,
             MessageId: messageId || '-',
-            Ack: sentMessage?.ack ?? '-'
+            Ack: sentMessage?.ack ?? '-',
+            Mapping: contactIdentityMap.size
         });
 
         return res.json({
             success: true,
             message: 'Pesan WhatsApp berhasil dikirim.',
             phone,
+            doctorId,
             messageId
         });
     } catch (error) {
         terminalLog('WHATSAPP GAGAL DIKIRIM', {
             Status: 'GAGAL',
+            DoctorId: doctorId || '-',
             Tujuan: phone || '-',
             Alasan: error.message || 'Gagal mengirim WhatsApp'
         });
@@ -726,14 +759,11 @@ app.post('/send', async (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-    console.log(
-        `WhatsApp gateway berjalan di http://localhost:${PORT}`
-    );
+    console.log(`WhatsApp gateway berjalan di http://localhost:${PORT}`);
 });
 
 client.initialize().catch((error) => {
     waState = 'ERROR';
     lastError = error.message;
-
     console.error('Gagal menginisialisasi WhatsApp:', error);
 });
