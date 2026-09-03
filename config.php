@@ -29,7 +29,7 @@ $databases = [
 
 const APP_NAME = 'DokterReminder';
 
-const DEFAULT_TEMPLATE = "Assalamualaikum, {{nama_dokter}}.\n\nMengingatkan bahwa Anda memiliki jadwal praktik:\n\n📅 {{tanggal}}\n🏥 {{nama_rs}}\n🩺 Poli: {{nama_poli}}\n🕐 Jam: {{jam_mulai}} - {{jam_selesai}}\n📍 Lokasi: {{lokasi}}\n\nJumlah Pasien : {{jumlah_pasien}}\nJumlah Inden Pasien : {{inden}}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\nTerima kasih.\nWassalamualaikum, Wr.Wb";
+const DEFAULT_TEMPLATE = "Assalamualaikum, {{nama_dokter}}.\n\nMengingatkan bahwa Anda memiliki jadwal praktik:\n\n📅 {{tanggal}}\n🏥 {{nama_rs}}\n🩺 Poli: {{nama_poli}}\n🕐 Jam: {{jam_mulai}} - {{jam_selesai}}\n📍 Lokasi: {{lokasi}}\n\nJumlah Pasien : {{jumlah_pasien}}\nJumlah Inden Pasien : {{inden}}\n\nApakah ada perubahan Jadwal atau Pembatasan Kuota dokter?\n\nTerima kasih.\nWassalamualaikum, Wr.Wb";
 
 date_default_timezone_set('Asia/Jakarta');
 
