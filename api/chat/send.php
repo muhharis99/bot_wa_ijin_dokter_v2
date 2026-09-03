@@ -30,7 +30,7 @@ if ($message === '') {
     ], 422);
 }
 
-if (mb_strlen($message) > 5000) {
+if (strlen($message) > 20000) {
     chatJson([
         'success' => false,
         'message' => 'Pesan terlalu panjang.'
@@ -75,11 +75,18 @@ try {
         'id' => (int) db()->lastInsertId(),
         'message_id' => $messageId
     ]);
-} catch (Throwable $e) {
-    error_log('Gagal mengirim chat dokter: ' . $e->getMessage());
+} catch (RuntimeException $e) {
+    error_log('Gateway chat dokter gagal: ' . $e->getMessage());
 
     chatJson([
         'success' => false,
         'message' => $e->getMessage()
+    ], 500);
+} catch (Throwable $e) {
+    error_log('Gagal menyimpan chat dokter keluar: ' . $e->getMessage());
+
+    chatJson([
+        'success' => false,
+        'message' => 'Pesan terkirim tetapi pencatatan chat gagal. Periksa log server sebelum mengirim ulang.'
     ], 500);
 }
