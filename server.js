@@ -6,6 +6,8 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const app = express();
 const PORT = Number(process.env.WA_PORT || 3210);
 const HOST = process.env.WA_HOST || '0.0.0.0';
+const CHAT_INCOMING_URL = process.env.CHAT_INCOMING_URL ||
+    'http://127.0.0.1/dokter-reminder/api/chat/incoming.php';
 
 app.disable('x-powered-by');
 app.use(cors());
@@ -85,6 +87,115 @@ function terminalLog(status, data = {}) {
     console.log(lines.join('\n'));
 }
 
+function incomingMessageContent(message) {
+    const type = String(message.type || 'chat').toLowerCase();
+    const body = String(message.body || '').trim();
+
+    if (body !== '') {
+        return body;
+    }
+
+    if (type === 'image') {
+        return '[IMAGE]';
+    }
+
+    if (type === 'document') {
+        return '[DOCUMENT]';
+    }
+
+    if (type === 'audio' || type === 'ptt') {
+        return '[AUDIO]';
+    }
+
+    if (type === 'video') {
+        return '[VIDEO]';
+    }
+
+    return '[MESSAGE]';
+}
+
+function incomingMessageType(message) {
+    const type = String(message.type || 'chat').toLowerCase();
+
+    if (type === 'chat') {
+        return 'text';
+    }
+
+    if (type === 'ptt') {
+        return 'audio';
+    }
+
+    return type;
+}
+
+async function forwardIncomingMessage(message) {
+    if (message.fromMe) {
+        return;
+    }
+
+    const source = String(message.from || '');
+
+    if (source === '' ||
+        source === 'status@broadcast' ||
+        source.endsWith('@g.us') ||
+        source.endsWith('@broadcast')) {
+        return;
+    }
+
+    const phone = normalizePhone(source.split('@')[0]);
+    const messageId = message?.id?._serialized || '';
+
+    if (!phone || !messageId) {
+        return;
+    }
+
+    const timestamp = Number(message.timestamp || 0);
+    const receivedAt = timestamp > 0
+        ? new Date(timestamp * 1000).toISOString()
+        : new Date().toISOString();
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    try {
+        const response = await fetch(CHAT_INCOMING_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                message_id: messageId,
+                phone,
+                message_type: incomingMessageType(message),
+                message: incomingMessageContent(message),
+                received_at: receivedAt
+            }),
+            signal: controller.signal
+        });
+
+        if (!response.ok) {
+            const body = await response.text();
+            throw new Error(
+                `HTTP ${response.status}: ${body.slice(0, 250)}`
+            );
+        }
+
+        terminalLog('CHAT DOKTER MASUK DISIMPAN', {
+            Status: 'BERHASIL',
+            Pengirim: phone,
+            MessageId: messageId
+        });
+    } catch (error) {
+        console.error(
+            'Gagal meneruskan chat dokter masuk:',
+            error.message || error
+        );
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 client.on('qr', async (qr) => {
     try {
         qrDataUrl = await QRCode.toDataURL(qr, {
@@ -136,6 +247,10 @@ client.on('disconnected', (reason) => {
     lastError = String(reason || 'Disconnected');
 
     console.warn('WhatsApp disconnected:', reason);
+});
+
+client.on('message', (message) => {
+    forwardIncomingMessage(message);
 });
 
 app.get('/', (req, res) => {
