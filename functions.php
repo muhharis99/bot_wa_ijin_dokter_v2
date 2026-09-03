@@ -483,7 +483,7 @@ function schedulesFor(string $date): array
     return $cache[$date];
 }
 
-function indenCount(string $date, string $doctorCode, array $items): int
+function indenCountsBySchedule(string $date, array $items): array
 {
     static $cache = [];
     $jadwalIds = [];
@@ -500,13 +500,19 @@ function indenCount(string $date, string $doctorCode, array $items): int
     sort($jadwalIds);
 
     if (!$jadwalIds) {
-        return 0;
+        return [];
     }
 
     $cacheKey = $date . '|' . implode(',', $jadwalIds);
 
     if (isset($cache[$cacheKey])) {
         return $cache[$cacheKey];
+    }
+
+    $counts = [];
+
+    foreach ($jadwalIds as $jadwalId) {
+        $counts[$jadwalId] = 0;
     }
 
     try {
@@ -516,21 +522,31 @@ function indenCount(string $date, string $doctorCode, array $items): int
         $params[] = date('Y-m-d', strtotime($date . ' +1 day')) . ' 00:00:00';
 
         $statement = get_db('rsi_byl')->prepare("
-            SELECT COUNT(*)
+            SELECT
+                jadwal_id,
+                COUNT(*) AS jumlah
             FROM inden_kunjung
             WHERE jadwal_id IN ({$placeholders})
                 AND tgl_masuk >= ?
                 AND tgl_masuk < ?
                 AND (deleted IS NULL OR deleted = 0 OR deleted = '')
+            GROUP BY jadwal_id
         ");
 
         $statement->execute($params);
 
-        $cache[$cacheKey] = (int) $statement->fetchColumn();
+        foreach ($statement->fetchAll() as $row) {
+            $jadwalId = (int) ($row['jadwal_id'] ?? 0);
+
+            if ($jadwalId > 0) {
+                $counts[$jadwalId] = (int) ($row['jumlah'] ?? 0);
+            }
+        }
     } catch (Throwable $e) {
-        error_log('Gagal menghitung inden_kunjung: ' . $e->getMessage());
-        $cache[$cacheKey] = 0;
+        error_log('Gagal menghitung inden_kunjung per jadwal: ' . $e->getMessage());
     }
+
+    $cache[$cacheKey] = $counts;
 
     return $cache[$cacheKey];
 }
@@ -598,12 +614,24 @@ function patientCount(string $date, string $doctorCode, array $items): int
 
 function buildReminderMessage(array $doctor, array $items, string $date): string
 {
+    $indenBySchedule = indenCountsBySchedule($date, $items);
+    $primaryScheduleId = (int) ($items[0]['jadwal_id'] ?? 0);
+    $primaryInden = $primaryScheduleId > 0
+        ? (int) ($indenBySchedule[$primaryScheduleId] ?? 0)
+        : 0;
+
     $additionalItems = array_slice($items, 1);
     $rows = '';
 
     foreach ($additionalItems as $item) {
+        $jadwalId = (int) ($item['jadwal_id'] ?? 0);
+        $inden = $jadwalId > 0
+            ? (int) ($indenBySchedule[$jadwalId] ?? 0)
+            : 0;
+
         $rows .= "\n🕐 {$item['jam_mulai']} - {$item['jam_selesai']}\n";
         $rows .= "   Poli {$item['nama_poli']} — {$item['lokasi']}\n";
+        $rows .= "Jumlah Inden Pasien : {$inden}\n";
     }
 
     $formattedDate = indoDate($date);
@@ -612,12 +640,6 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
     if ($dayName === '') {
         $dayName = indoDay($date);
     }
-
-    $inden = indenCount(
-        $date,
-        (string) ($doctor['doctor_id'] ?? ''),
-        $items
-    );
 
     $variables = [
         '{{nama_dokter}}' => (string) ($doctor['nama_dokter'] ?? ''),
@@ -629,7 +651,7 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         '{{jam_mulai}}' => (string) ($items[0]['jam_mulai'] ?? ''),
         '{{jam_selesai}}' => (string) ($items[0]['jam_selesai'] ?? ''),
         '{{lokasi}}' => (string) ($items[0]['lokasi'] ?? $items[0]['nama_poli'] ?? ''),
-        '{{inden}}' => (string) $inden,
+        '{{inden}}' => (string) $primaryInden,
         '{{nama_rs}}' => setting(
             'nama_rs',
             'RS Sehat Sentosa'
@@ -640,7 +662,7 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
     $message = strtr($template, $variables);
 
     if (strpos($template, '{{inden}}') === false) {
-        $indenBlock = "Jumlah Inden Pasien : {$inden}\n\nApakah ada perubahan Jadwal atau Pembatasan Kuota dokter?\n\n";
+        $indenBlock = "Jumlah Inden Pasien : {$primaryInden}\n\nApakah ada perubahan Jadwal atau Pembatasan Kuota dokter?\n\n";
 
         if (strpos($message, 'Terima kasih.') !== false) {
             $message = preg_replace(
