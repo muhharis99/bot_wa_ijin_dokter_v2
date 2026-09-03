@@ -325,6 +325,57 @@ function applyMovedPracticeSchedules(array $rows, string $date): array
     return $rows;
 }
 
+function testScheduleFor(string $date): ?array
+{
+    static $cache = [];
+
+    if (array_key_exists($date, $cache)) {
+        return $cache[$date];
+    }
+
+    try {
+        $statement = get_db('rsi_byl')->prepare("
+            SELECT no_hp
+            FROM kontak_dokter
+            WHERE kd_dr = ?
+                AND no_hp IS NOT NULL
+                AND no_hp != ''
+                AND no_hp != '0'
+            LIMIT 1
+        ");
+
+        $statement->execute(['S666']);
+        $phone = trim((string) ($statement->fetchColumn() ?: ''));
+
+        if ($phone === '') {
+            $cache[$date] = null;
+            return null;
+        }
+
+        $cache[$date] = [
+            'hari' => indoDay($date),
+            'tanggal' => $date,
+            'jadwal_id' => 0,
+            'jam_mulai' => '08:00:00',
+            'jam_selesai' => '09:00:00',
+            'poli_kd' => 'TEST_S666',
+            'lokasi' => 'TEST KIRIM',
+            'kode_dokter' => 'S666',
+            'nama_dokter' => 'Muhammad Haris',
+            'spesialis' => 'TEST KIRIM',
+            'nama_poli' => 'TEST KIRIM',
+            'doctor_id' => 'S666',
+            'no_whatsapp' => $phone,
+            'is_test_schedule' => true
+        ];
+    } catch (Throwable $e) {
+        error_log('Gagal membuat jadwal test S666: ' . $e->getMessage());
+        $cache[$date] = null;
+    }
+
+    return $cache[$date];
+}
+
 function schedulesFor(string $date): array
 {
     static $cache = [];
@@ -420,6 +471,12 @@ function schedulesFor(string $date): array
     }
 
     $rows = applyMovedPracticeSchedules($rows, $date);
+    $testSchedule = testScheduleFor($date);
+
+    if ($testSchedule !== null) {
+        $rows[] = $testSchedule;
+    }
+
     $cache[$date] = $rows;
 
     return $cache[$date];
