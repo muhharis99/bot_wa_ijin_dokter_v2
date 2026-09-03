@@ -32,14 +32,15 @@ function syncDefaultReminderTemplate(PDO $pdo): void
             return;
         }
 
-        $hasPatientCount = strpos($template, '{{jumlah_pasien}}') !== false;
+        $hasPatientCount = strpos($template, '{{jumlah_pasien}}') !== false ||
+            stripos($template, 'Jumlah Pasien') !== false;
         $hasIndenCount = strpos($template, '{{inden}}') !== false;
         $hasQuotaQuestion = stripos(
             $template,
             'Apakah ada perubahan Jadwal atau Pembatasan Kuota dokter?'
         ) !== false;
 
-        if (!$hasPatientCount || !$hasIndenCount || !$hasQuotaQuestion) {
+        if ($hasPatientCount || !$hasIndenCount || !$hasQuotaQuestion) {
             $update = $pdo->prepare("
                 UPDATE settings
                 SET `value` = ?
