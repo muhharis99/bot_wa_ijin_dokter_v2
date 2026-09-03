@@ -4,6 +4,41 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 
+function chatEnsureSchema(): void
+{
+    static $ready = false;
+
+    if ($ready) {
+        return;
+    }
+
+    db()->exec("
+        CREATE TABLE IF NOT EXISTS whatsapp_messages (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            message_id VARCHAR(255) NULL,
+            doctor_id VARCHAR(50) NULL,
+            phone VARCHAR(30) NOT NULL,
+            direction ENUM('IN', 'OUT') NOT NULL,
+            message_type VARCHAR(30) NOT NULL DEFAULT 'text',
+            message TEXT NULL,
+            status VARCHAR(30) NULL,
+            sent_at DATETIME NULL,
+            received_at DATETIME NULL,
+            read_at DATETIME NULL,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_message_id (message_id),
+            KEY idx_phone (phone),
+            KEY idx_doctor_id (doctor_id),
+            KEY idx_created_at (created_at),
+            KEY idx_chat_phone_id (phone, id),
+            KEY idx_chat_unread (doctor_id, direction, read_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ");
+
+    $ready = true;
+}
+
 function chatNormalizePhone(string $value): string
 {
     $phone = preg_replace('/\D+/', '', $value);
@@ -191,3 +226,5 @@ function chatIncomingRequestAllowed(): bool
     return in_array($remote, ['127.0.0.1', '::1'], true) ||
         ($server !== '' && $remote === $server);
 }
+
+chatEnsureSchema();
