@@ -95,7 +95,8 @@ function sanitizeReminderMessage(string $message): string
         '/^[ \t]*Mohon hadir sesuai jadwal praktik[,.]?[ \t]*\r?\n?/mi',
         '/^[ \t]*Jika ada perubahan jam,\s*silahkan ketik\s*["“”]?Ubah\s*\[Nama Poli\]\s*:\s*\[jam_baru\]["“”]?[,.]?[ \t]*\r?\n?/mi',
         '/^[ \t]*Jika ada perubahan jam,\s*silakan ketik\s*["“”]?Ubah\s*\[Nama Poli\]\s*:\s*\[jam_baru\]["“”]?[,.]?[ \t]*\r?\n?/mi',
-        '/^[ \t]*Rencana Kontrol\s*:\s*.*(?:\r?\n)?/mi'
+        '/^[ \t]*Rencana Kontrol\s*:\s*.*(?:\r?\n)?/mi',
+        '/^[ \t]*Jumlah Pasien\s*:\s*.*(?:\r?\n)?/mi'
     ];
 
     $message = preg_replace($patterns, '', $message);
@@ -612,12 +613,11 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         $dayName = indoDay($date);
     }
 
-    $doctorCode = (string) ($doctor['doctor_id'] ?? '');
-    $isPracticeDay = $date === date('Y-m-d');
-    $jumlahPasien = $isPracticeDay
-        ? patientCount($date, $doctorCode, $items)
-        : 0;
-    $inden = indenCount($date, $doctorCode, $items);
+    $inden = indenCount(
+        $date,
+        (string) ($doctor['doctor_id'] ?? ''),
+        $items
+    );
 
     $variables = [
         '{{nama_dokter}}' => (string) ($doctor['nama_dokter'] ?? ''),
@@ -629,7 +629,6 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
         '{{jam_mulai}}' => (string) ($items[0]['jam_mulai'] ?? ''),
         '{{jam_selesai}}' => (string) ($items[0]['jam_selesai'] ?? ''),
         '{{lokasi}}' => (string) ($items[0]['lokasi'] ?? $items[0]['nama_poli'] ?? ''),
-        '{{jumlah_pasien}}' => (string) $jumlahPasien,
         '{{inden}}' => (string) $inden,
         '{{nama_rs}}' => setting(
             'nama_rs',
@@ -640,41 +639,18 @@ function buildReminderMessage(array $doctor, array $items, string $date): string
     $template = reminderTemplate();
     $message = strtr($template, $variables);
 
-    if ($isPracticeDay) {
-        if (strpos($template, '{{jumlah_pasien}}') === false) {
-            $patientBlock = "Jumlah Pasien : {$jumlahPasien}\nJumlah Inden Pasien : {$inden}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\n";
+    if (strpos($template, '{{inden}}') === false) {
+        $indenBlock = "Jumlah Inden Pasien : {$inden}\n\nApakah ada perubahan Jadwal atau Pembatasan Kuota dokter?\n\n";
 
-            if (strpos($message, 'Terima kasih.') !== false) {
-                $message = preg_replace(
-                    '/Terima kasih\./',
-                    $patientBlock . 'Terima kasih.',
-                    $message,
-                    1
-                );
-            } else {
-                $message .= "\n\n" . trim($patientBlock);
-            }
-        }
-    } else {
-        $message = preg_replace(
-            '/^[ \t]*Jumlah Pasien\s*:\s*.*(?:\r?\n)?/mi',
-            '',
-            $message
-        );
-
-        if (strpos($template, '{{inden}}') === false) {
-            $indenBlock = "Jumlah Inden Pasien : {$inden}\n\nApakah ada pembatasan untuk kuota pasien nggih dokter?\n\n";
-
-            if (strpos($message, 'Terima kasih.') !== false) {
-                $message = preg_replace(
-                    '/Terima kasih\./',
-                    $indenBlock . 'Terima kasih.',
-                    $message,
-                    1
-                );
-            } else {
-                $message .= "\n\n" . trim($indenBlock);
-            }
+        if (strpos($message, 'Terima kasih.') !== false) {
+            $message = preg_replace(
+                '/Terima kasih\./',
+                $indenBlock . 'Terima kasih.',
+                $message,
+                1
+            );
+        } else {
+            $message .= "\n\n" . trim($indenBlock);
         }
     }
 
