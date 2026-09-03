@@ -16,6 +16,10 @@ app.use(express.json({ limit: '128kb' }));
 let waState = 'STARTING';
 let qrDataUrl = null;
 let lastError = null;
+let incomingQueueProcessing = false;
+
+const incomingQueue = new Map();
+const completedIncoming = new Map();
 
 const timeFormatter = new Intl.DateTimeFormat('id-ID', {
     timeZone: 'Asia/Jakarta',
@@ -128,9 +132,9 @@ function incomingMessageType(message) {
     return type;
 }
 
-async function forwardIncomingMessage(message) {
-    if (message.fromMe) {
-        return;
+function incomingPayload(message) {
+    if (!message || message.fromMe) {
+        return null;
     }
 
     const source = String(message.from || '');
@@ -139,14 +143,14 @@ async function forwardIncomingMessage(message) {
         source === 'status@broadcast' ||
         source.endsWith('@g.us') ||
         source.endsWith('@broadcast')) {
-        return;
+        return null;
     }
 
     const phone = normalizePhone(source.split('@')[0]);
     const messageId = message?.id?._serialized || '';
 
     if (!phone || !messageId) {
-        return;
+        return null;
     }
 
     const timestamp = Number(message.timestamp || 0);
@@ -154,8 +158,76 @@ async function forwardIncomingMessage(message) {
         ? new Date(timestamp * 1000).toISOString()
         : new Date().toISOString();
 
+    return {
+        message_id: messageId,
+        phone,
+        message_type: incomingMessageType(message),
+        message: incomingMessageContent(message),
+        received_at: receivedAt
+    };
+}
+
+function retryDelay(attempts) {
+    const delays = [
+        1000,
+        2000,
+        5000,
+        10000,
+        20000,
+        30000,
+        60000
+    ];
+
+    return delays[Math.min(attempts, delays.length - 1)];
+}
+
+function cleanupCompletedIncoming() {
+    const cutoff = Date.now() - (30 * 60 * 1000);
+
+    for (const [messageId, completedAt] of completedIncoming.entries()) {
+        if (completedAt < cutoff) {
+            completedIncoming.delete(messageId);
+        }
+    }
+}
+
+function enqueueIncomingMessage(message, eventName) {
+    const payload = incomingPayload(message);
+
+    if (!payload) {
+        return;
+    }
+
+    const messageId = payload.message_id;
+
+    cleanupCompletedIncoming();
+
+    if (completedIncoming.has(messageId) || incomingQueue.has(messageId)) {
+        return;
+    }
+
+    incomingQueue.set(messageId, {
+        payload,
+        attempts: 0,
+        nextAttemptAt: Date.now(),
+        lastError: null,
+        eventName
+    });
+
+    terminalLog('CHAT DOKTER MASUK DITERIMA', {
+        Status: 'MASUK ANTREAN',
+        Pengirim: payload.phone,
+        MessageId: messageId,
+        Event: eventName,
+        Antrean: incomingQueue.size
+    });
+
+    processIncomingQueue();
+}
+
+async function deliverIncomingItem(messageId, item) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
     try {
         const response = await fetch(CHAT_INCOMING_URL, {
@@ -164,37 +236,89 @@ async function forwardIncomingMessage(message) {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({
-                message_id: messageId,
-                phone,
-                message_type: incomingMessageType(message),
-                message: incomingMessageContent(message),
-                received_at: receivedAt
-            }),
+            body: JSON.stringify(item.payload),
             signal: controller.signal
         });
 
+        const responseText = await response.text();
+
         if (!response.ok) {
-            const body = await response.text();
             throw new Error(
-                `HTTP ${response.status}: ${body.slice(0, 250)}`
+                `HTTP ${response.status}: ${responseText.slice(0, 250)}`
             );
         }
 
+        let result = null;
+
+        try {
+            result = JSON.parse(responseText);
+        } catch (error) {
+            throw new Error('Respons webhook incoming bukan JSON yang valid.');
+        }
+
+        if (!result || result.success !== true) {
+            throw new Error(
+                result?.message || 'Webhook incoming tidak mengembalikan status sukses.'
+            );
+        }
+
+        incomingQueue.delete(messageId);
+        completedIncoming.set(messageId, Date.now());
+
         terminalLog('CHAT DOKTER MASUK DISIMPAN', {
             Status: 'BERHASIL',
-            Pengirim: phone,
-            MessageId: messageId
+            Pengirim: item.payload.phone,
+            MessageId: messageId,
+            Percobaan: item.attempts + 1,
+            Antrean: incomingQueue.size
         });
     } catch (error) {
-        console.error(
-            'Gagal meneruskan chat dokter masuk:',
-            error.message || error
-        );
+        item.attempts += 1;
+        item.lastError = error.message || String(error);
+        item.nextAttemptAt = Date.now() + retryDelay(item.attempts - 1);
+        incomingQueue.set(messageId, item);
+
+        terminalLog('CHAT DOKTER MASUK MENUNGGU RETRY', {
+            Status: 'RETRY',
+            Pengirim: item.payload.phone,
+            MessageId: messageId,
+            Percobaan: item.attempts,
+            UlangDalamDetik: Math.round(
+                (item.nextAttemptAt - Date.now()) / 1000
+            ),
+            Alasan: item.lastError,
+            Antrean: incomingQueue.size
+        });
     } finally {
         clearTimeout(timeout);
     }
 }
+
+async function processIncomingQueue() {
+    if (incomingQueueProcessing) {
+        return;
+    }
+
+    incomingQueueProcessing = true;
+
+    try {
+        const currentTime = Date.now();
+
+        for (const [messageId, item] of incomingQueue.entries()) {
+            if (item.nextAttemptAt > currentTime) {
+                continue;
+            }
+
+            await deliverIncomingItem(messageId, item);
+        }
+    } finally {
+        incomingQueueProcessing = false;
+    }
+}
+
+setInterval(() => {
+    processIncomingQueue();
+}, 2000);
 
 client.on('qr', async (qr) => {
     try {
@@ -250,7 +374,11 @@ client.on('disconnected', (reason) => {
 });
 
 client.on('message', (message) => {
-    forwardIncomingMessage(message);
+    enqueueIncomingMessage(message, 'message');
+});
+
+client.on('message_create', (message) => {
+    enqueueIncomingMessage(message, 'message_create');
 });
 
 app.get('/', (req, res) => {
@@ -364,7 +492,8 @@ app.get('/status', (req, res) => {
         state: waState,
         ready: waState === 'READY',
         hasQr: Boolean(qrDataUrl),
-        error: lastError
+        error: lastError,
+        incomingQueue: incomingQueue.size
     });
 });
 
