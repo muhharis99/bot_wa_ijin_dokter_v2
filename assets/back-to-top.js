@@ -228,6 +228,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 navbarMenu.appendChild(movedPracticeLink);
             }
         }
+
+        if (!navbarMenu.querySelector('a[href="chat_dokter.php"]')) {
+            const movedPracticeLink = navbarMenu.querySelector('a[href="pindah_jam_praktek.php"]');
+            const chatDoctorLink = document.createElement('a');
+            chatDoctorLink.className = 'nav-link';
+            chatDoctorLink.href = 'chat_dokter.php';
+            chatDoctorLink.textContent = 'Chat Dokter';
+
+            if (movedPracticeLink && movedPracticeLink.nextSibling) {
+                navbarMenu.insertBefore(chatDoctorLink, movedPracticeLink.nextSibling);
+            } else {
+                navbarMenu.appendChild(chatDoctorLink);
+            }
+        }
     }
 
     const button = document.createElement('button');
