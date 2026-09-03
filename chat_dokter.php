@@ -18,7 +18,7 @@ require_once __DIR__ . '/functions.php';
     <link rel="stylesheet" href="assets/style.css">
     <link rel="stylesheet" href="assets/chat-dokter.css">
 </head>
-<body class="bg-body-tertiary">
+<body class="bg-body-tertiary page-chat-dokter">
     <nav class="navbar navbar-expand-lg bg-white border-bottom sticky-top">
         <div class="container py-2">
             <a class="navbar-brand fw-bold text-success" href="index.php">
@@ -46,7 +46,7 @@ require_once __DIR__ . '/functions.php';
     </nav>
 
     <main class="container-fluid px-3 px-lg-4 py-3 chat-page" id="doctorChatApp">
-        <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center gap-3 mb-3 chat-page-heading">
             <div>
                 <span class="badge text-bg-success-subtle text-success mb-2">WHATSAPP</span>
                 <h1 class="h3 mb-1">Chat Dokter</h1>
@@ -61,7 +61,7 @@ require_once __DIR__ . '/functions.php';
         <div class="card border-0 shadow-sm chat-shell">
             <div class="row g-0 h-100">
                 <aside class="col-12 col-lg-4 col-xl-3 chat-sidebar border-end">
-                    <div class="p-3 border-bottom bg-white">
+                    <div class="p-3 border-bottom bg-white chat-search-box">
                         <label class="form-label fw-semibold" for="doctorSearch">Cari dokter</label>
                         <input
                             type="search"
