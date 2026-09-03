@@ -375,6 +375,7 @@ function schedulesFor(string $date): array
                 'GCU',
                 'CAPD'
             )
+            AND UPPER(COALESCE(mp.poli_nama, '')) NOT LIKE '%CAPD%'
         GROUP BY
             dj.dokter_kd,
             dj.poli_kd
